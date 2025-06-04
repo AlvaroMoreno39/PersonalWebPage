@@ -25,6 +25,8 @@
   --accent-color: #149ddd; /* Accent color that represents your brand on the website. It's used for buttons, links, and other elements that need to stand out */
   --surface-color: #ffffff; /* The surface color is used as a background of boxed elements within sections, such as cards, icon boxes, or other elements that require a visual separation from the global background. */
   --contrast-color: #ffffff; /* Contrast color for text, ensuring readability against backgrounds of accent, heading, or default colors. */
+  --card-radius: 8px; /* Global border radius for cards and interactive elements */
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Consistent shadow for depth */
 }
 
 /* Nav Menu Colors - The following color variables are used specifically for the navigation menu. They are separate from the global colors to allow for more customization options */
@@ -75,6 +77,21 @@ a {
 a:hover {
   color: color-mix(in srgb, var(--accent-color), transparent 25%);
   text-decoration: none;
+}
+
+/* Unified button style */
+.btn-style {
+  color: var(--contrast-color);
+  background: var(--accent-color);
+  padding: 10px 20px;
+  border-radius: var(--card-radius);
+  display: inline-block;
+  transition: 0.3s;
+}
+
+.btn-style:hover {
+  background: color-mix(in srgb, var(--accent-color), transparent 20%);
+  color: var(--contrast-color);
 }
 
 h1,
@@ -734,6 +751,9 @@ section,
   margin-top: -2px;
   border-left: 2px solid var(--accent-color);
   position: relative;
+  background-color: var(--surface-color);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 
 .resume .resume-item h4 {
@@ -823,6 +843,8 @@ section,
 .portfolio .portfolio-content {
   position: relative;
   overflow: hidden;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 
 .portfolio .portfolio-content img {
@@ -1003,8 +1025,8 @@ section,
   background-color: var(--surface-color);
   position: relative;
   margin-bottom: 35px;
-  border-radius: 6px;
-  box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 
 .testimonials .testimonial-item p::after {
@@ -1045,8 +1067,9 @@ section,
 --------------------------------------------------------------*/
 .contact .info-wrap {
   background-color: var(--surface-color);
-  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1);
   padding: 30px;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 
 @media (max-width: 575px) {
@@ -1057,6 +1080,10 @@ section,
 
 .contact .info-item {
   margin-bottom: 40px;
+  padding: 20px;
+  background-color: var(--surface-color);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 
 .contact .info-item i {
@@ -1095,7 +1122,8 @@ section,
   background-color: var(--surface-color);
   height: 100%;
   padding: 30px;
-  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 
 @media (max-width: 575px) {
@@ -1166,7 +1194,8 @@ section,
 
 .portfolio-details .portfolio-info {
   padding: 30px;
-  box-shadow: 0px 0 30px rgba(0, 0, 0, 0.1);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 
 .portfolio-details .portfolio-info h3 {
@@ -1282,7 +1311,7 @@ section,
   width: 100px; /* Ajusta el tamaño del contenedor */
   height: 100px; /* Altura uniforme */
   overflow: hidden; /* Asegura que las imágenes no se salgan del contenedor */
-  border-radius: 8px; /* Añade un pequeño borde redondeado */
+  border-radius: var(--card-radius); /* Borde unificado */
   background-color: #f8f9fa; /* Fondo claro para mayor contraste */
 }
 
@@ -1302,8 +1331,8 @@ section,
 
 .info-map iframe {
   border: 2px solid #007bff;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 .info-map h3 {
   margin-bottom: 10px;
