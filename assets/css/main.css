@@ -631,6 +631,7 @@ section,
 
 .writeup-detail .detail-box {
   padding: 1.4rem;
+  animation: writeupEnter 0.28s ease;
 }
 
 .writeup-detail-header {
@@ -725,6 +726,17 @@ section,
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes writeupEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
