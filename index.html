@@ -2,87 +2,71 @@
 <html lang="en">
 
 <head>
-  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Álvaro Moreno Lumbreras - Personal web page</title>
-  <meta content="" name="description">
-  <meta content="" name="keywords">
+  <title>Alvaro Moreno Lumbreras - Personal Web Page</title>
+  <meta name="description"
+    content="Personal portfolio of Alvaro Moreno Lumbreras, junior IT and cybersecurity trainee focused on Linux systems, support, and hands-on projects.">
+  <meta name="keywords" content="Alvaro Moreno, cybersecurity, IT support, Linux, portfolio, junior developer">
 
-  <!-- Favicons -->
-  <link href="assets/img/favicon.png" rel="icon">
-  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
-
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com" rel="preconnect">
-  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
     rel="stylesheet">
 
-  <!-- Vendor CSS Files -->
+  <link rel="preload" href="assets/img/hero-bg.jpg" as="image">
+
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
-  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
-  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
 
-  <!-- Main CSS File -->
   <link href="assets/css/main.css" rel="stylesheet">
-
 </head>
 
 <body class="index-page">
 
   <header id="header" class="header dark-background d-flex flex-column">
-    <i class="header-toggle d-xl-none bi bi-list"></i>
+    <i class="header-toggle d-xl-none bi bi-list" aria-label="Toggle navigation"></i>
 
     <div class="profile-img">
-      <img src="assets/img/my-profile-img.jpg" alt="" class="img-fluid rounded-circle">
+      <img src="assets/img/my-profile-img.jpg" alt="Profile photo of Alvaro Moreno Lumbreras"
+        class="img-fluid rounded-circle" width="300" height="300" decoding="async">
     </div>
 
-    <a href="index.html" class="logo d-flex align-items-center justify-content-center">
-      <h1 class="sitename">Álvaro Moreno Lumbreras</h1>
+    <a href="index.html" class="logo d-flex align-items-center justify-content-center" aria-label="Homepage">
+      <h1 class="sitename">Alvaro Moreno Lumbreras</h1>
     </a>
 
-
     <div class="social-links text-center">
-      <a href="https://github.com/AlvaroMoreno39" target="_blank" class="github"><i class="bi bi-github"></i></a>
-      <a href="https://www.linkedin.com/in/álvaro-moreno-lumbreras-0bb9ba310/" target="_blank" class="linkedin"><i
-          class="bi bi-linkedin"></i></a>
+      <a href="https://github.com/AlvaroMoreno39" target="_blank" rel="noopener noreferrer" class="github"
+        aria-label="GitHub profile"><i class="bi bi-github"></i></a>
+      <a href="https://www.linkedin.com/in/alvaro-moreno-lumbreras-0bb9ba310/" target="_blank"
+        rel="noopener noreferrer" class="linkedin" aria-label="LinkedIn profile"><i class="bi bi-linkedin"></i></a>
     </div>
 
-
-    <nav id="navmenu" class="navmenu">
+    <nav id="navmenu" class="navmenu" aria-label="Main navigation">
       <ul>
         <li><a href="#hero" class="active"><i class="bi bi-house navicon"></i>Home</a></li>
-        <li><a href="#about"><i class="bi bi-person navicon"></i> About</a></li>
-        <li><a href="#resume"><i class="bi bi-file-earmark-text navicon"></i> Resume</a></li>
-        <li><a href="#portfolio"><i class="bi bi-images navicon"></i> Portfolio</a></li>
-        <li><a href="#contact"><i class="bi bi-envelope navicon"></i> Contact</a></li>
+        <li><a href="#about"><i class="bi bi-person navicon"></i>About</a></li>
+        <li><a href="#resume"><i class="bi bi-file-earmark-text navicon"></i>Resume</a></li>
+        <li><a href="#portfolio"><i class="bi bi-images navicon"></i>Portfolio</a></li>
+        <li><a href="#contact"><i class="bi bi-envelope navicon"></i>Contact</a></li>
       </ul>
     </nav>
-
   </header>
 
   <main class="main">
-
-    <!-- Hero Section -->
     <section id="hero" class="hero section dark-background">
-
-      <img src="assets/img/hero-bg.jpg" alt="" data-aos="fade-in" class="">
+      <img src="assets/img/hero-bg.jpg" alt="Dark abstract background" data-aos="fade-in" fetchpriority="high" decoding="async">
 
       <div class="container" data-aos="fade-up" data-aos-delay="100">
-        <h2>Álvaro Moreno Lumbreras</h2>
+        <h2>Alvaro Moreno Lumbreras</h2>
         <p>I'm <span class="typed"
-            data-typed-items="Junior IT & Cybersecurity Trainee, Linux-Oriented, Hands-on Learner"></span>
-        </p>
+            data-typed-items="Junior IT & Cybersecurity Trainee,Linux-Oriented,Hands-on Learner"></span></p>
       </div>
+    </section>
 
-    </section><!-- /Hero Section -->
-
-    <!-- About Section -->
     <section id="about" class="about section">
       <div class="container section-title" data-aos="fade-up">
         <h2>About Me</h2>
@@ -91,7 +75,6 @@
           currently training in cybersecurity through Hack The Box Academy. I enjoy hands-on environments,
           working mainly with Linux-based systems, virtual machines, and technical labs to continuously improve my
           skills.
-
         </p>
         <p>
           My goal is to grow professionally within IT and cybersecurity as a trainee or junior,
@@ -99,11 +82,11 @@
         </p>
       </div>
 
-
       <div class="container" data-aos="fade-up" data-aos-delay="100">
         <div class="row gy-4 justify-content-center">
           <div class="col-lg-4">
-            <img src="assets/img/mi_imagen.jpg" class="img-fluid rounded-circle" alt="Álvaro Moreno Lumbreras">
+            <img src="assets/img/mi_imagen.jpg" class="img-fluid rounded-circle" alt="Alvaro Moreno Lumbreras"
+              loading="lazy" decoding="async" width="600" height="600">
           </div>
 
           <div class="col-lg-8 content">
@@ -121,7 +104,7 @@
                   <li><i class="bi bi-chevron-right"></i> <strong>City:</strong> <span>Boadilla del Monte, Madrid,
                       Spain</span></li>
                   <li><i class="bi bi-chevron-right"></i> <strong>Email:</strong>
-                    <span>amorenolumbreras@gmail.com</span>
+                    <span><a href="mailto:amorenolumbreras@gmail.com">amorenolumbreras@gmail.com</a></span>
                   </li>
                 </ul>
               </div>
@@ -138,15 +121,11 @@
               Outside of technical work, I value discipline, consistency, and continuous self-improvement,
               principles that I apply both in my learning process and professional growth.
             </p>
-
           </div>
         </div>
       </div>
     </section>
 
-    <!-- /About Section -->
-
-    <!-- Skills Section -->
     <section id="skills" class="skills section light-background">
       <div class="container section-title" data-aos="fade-up">
         <h2>Skills</h2>
@@ -154,81 +133,57 @@
       </div>
 
       <div class="container" data-aos="fade-up" data-aos-delay="100">
-
-        <!-- Core (IT / Cybersecurity) -->
         <div class="skills-container d-flex flex-wrap justify-content-center mb-4">
-          <div class="skill-item">
-            <img src="assets/img/icons/ubuntu.png" alt="Linux" class="skill-icon">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/windows.png" alt="Windows" class="skill-icon">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/bash.png" alt="Bash" class="skill-icon">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/python.png" alt="Python" class="skill-icon">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/vmware.png" alt="Virtualization (VMware)">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/mysql.png" alt="MySQL" class="skill-icon">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/git.png" alt="Git" class="skill-icon">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/github.png" alt="GitHub" class="skill-icon">
-          </div>
+          <div class="skill-item"><img src="assets/img/icons/ubuntu.png" alt="Linux" class="skill-icon" loading="lazy"
+              decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/windows.png" alt="Windows" class="skill-icon" loading="lazy"
+              decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/bash.png" alt="Bash" class="skill-icon" loading="lazy"
+              decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/python.png" alt="Python" class="skill-icon" loading="lazy"
+              decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/vmware.png" alt="Virtualization with VMware"
+              class="skill-icon" loading="lazy" decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/mysql.png" alt="MySQL" class="skill-icon" loading="lazy"
+              decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/git.png" alt="Git" class="skill-icon" loading="lazy"
+              decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/github.png" alt="GitHub" class="skill-icon" loading="lazy"
+              decoding="async"></div>
         </div>
 
-        <!-- Background (Development) -->
         <div class="text-center mb-3">
           <p><i>Additional background:</i></p>
         </div>
 
         <div class="skills-container d-flex flex-wrap justify-content-center">
-          <div class="skill-item">
-            <img src="assets/img/icons/java.png" alt="Java" class="skill-icon">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/kotlin.png" alt="Kotlin" class="skill-icon">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/html.png" alt="HTML" class="skill-icon">
-          </div>
-          <div class="skill-item">
-            <img src="assets/img/icons/css.png" alt="CSS" class="skill-icon">
-          </div>
+          <div class="skill-item"><img src="assets/img/icons/java.png" alt="Java" class="skill-icon" loading="lazy"
+              decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/kotlin.png" alt="Kotlin" class="skill-icon" loading="lazy"
+              decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/html.png" alt="HTML" class="skill-icon" loading="lazy"
+              decoding="async"></div>
+          <div class="skill-item"><img src="assets/img/icons/css.png" alt="CSS" class="skill-icon" loading="lazy"
+              decoding="async"></div>
         </div>
-
       </div>
     </section>
-    <!-- /Skills Section -->
 
-
-
-    <!-- Resume Section -->
     <section id="resume" class="resume section">
-
       <div class="container section-title" data-aos="fade-up">
         <h2>Resume</h2>
         <p>Overview of my education and hands-on experience in IT systems and technical support.</p>
       </div>
 
       <div class="container">
-        <!-- IMPORTANTE: una sola row -->
         <div class="row">
-
-          <!-- LEFT COLUMN: Education -->
           <div class="col-lg-6" data-aos="fade-up" data-aos-delay="100">
             <h3 class="resume-title">Education</h3>
 
             <div class="resume-item">
               <h4>Cybersecurity Training (In Progress)</h4>
-              <h5>2025 – Present</h5>
-              <p><em>Hack The Box Academy — Junior Cybersecurity Analyst</em></p>
+              <h5>2025 - Present</h5>
+              <p><em>Hack The Box Academy - Junior Cybersecurity Analyst</em></p>
               <p>
                 Hands-on training focused on IT systems, Linux environments,
                 virtualization, and cybersecurity fundamentals through practical labs.
@@ -237,7 +192,7 @@
 
             <div class="resume-item">
               <h4>Advanced Technician in Cross-Platform Application Development</h4>
-              <h5>2023 – 2025</h5>
+              <h5>2023 - 2025</h5>
               <p><em>IES San Juan de la Cruz, Madrid</em></p>
               <p>
                 Higher vocational training focused on software development,
@@ -247,7 +202,7 @@
 
             <div class="resume-item">
               <h4>Intermediate Technician in Microcomputer Systems and Networks</h4>
-              <h5>2021 – 2023</h5>
+              <h5>2021 - 2023</h5>
               <p><em>IES San Juan de la Cruz, Madrid</em></p>
               <p>
                 Technical education in computer systems, hardware maintenance,
@@ -256,14 +211,13 @@
             </div>
           </div>
 
-          <!-- RIGHT COLUMN: Experience -->
           <div class="col-lg-6" data-aos="fade-up" data-aos-delay="200">
             <h3 class="resume-title">Professional Experience</h3>
 
             <div class="resume-item">
               <h4>SAP Support Technician (Internship)</h4>
-              <h5>Mar 2025 – May 2025</h5>
-              <p><em>BASELINE — Madrid (Hybrid)</em></p>
+              <h5>Mar 2025 - May 2025</h5>
+              <p><em>BASELINE - Madrid (Hybrid)</em></p>
               <ul>
                 <li>Provided technical support to suppliers using the SAP Sourcing platform.</li>
                 <li>Managed and resolved incidents related to system access and operational processes.</li>
@@ -274,8 +228,8 @@
 
             <div class="resume-item">
               <h4>IT Support Technician (Internship)</h4>
-              <h5>Mar 2023 – Jun 2023</h5>
-              <p><em>Estudios Analíticos Aplicados a la Clínica — Madrid</em></p>
+              <h5>Mar 2023 - Jun 2023</h5>
+              <p><em>Estudios Analiticos Aplicados a la Clinica - Madrid</em></p>
               <ul>
                 <li>Provided technical support and maintenance for IT systems.</li>
                 <li>Resolved network and connectivity incidents.</li>
@@ -283,20 +237,12 @@
                 <li>Worked closely with the IT team on system maintenance tasks.</li>
               </ul>
             </div>
-
           </div>
-
         </div>
       </div>
-
     </section>
-    <!-- /Resume Section -->
 
-
-    <!-- Portfolio Section -->
     <section id="portfolio" class="portfolio section light-background">
-
-      <!-- Section Title -->
       <div class="container section-title" data-aos="fade-up">
         <h2>Portfolio</h2>
         <p>
@@ -304,53 +250,44 @@
           and hands-on technical learning across software development and IT-related tools.
         </p>
       </div>
-      <!-- End Section Title -->
 
       <div class="container" data-aos="fade-up" data-aos-delay="100">
         <div class="row g-4 justify-content-center">
-
-          <!-- GymTrack -->
           <div class="col-lg-6 d-flex">
-            <div class="card shadow-sm border-0 p-4 w-100"
-              style="border-radius: 1rem; background-color: var(--surface-color); transition: transform 0.3s ease, box-shadow 0.3s ease;">
-
+            <article class="project-card w-100">
               <img src="assets/img/portfolio/gymtrack.png" class="img-fluid rounded mx-auto d-block mb-3"
-                alt="GymTrack App" style="max-height: 200px; object-fit: contain;">
+                alt="GymTrack Android App screenshot" loading="lazy" decoding="async">
 
               <div class="card-body text-start">
-                <h5 class="card-title">GymTrack – Android App</h5>
-
+                <h5 class="card-title">GymTrack - Android App</h5>
                 <p class="card-text">
                   An Android fitness tracking app built with Kotlin, Jetpack Compose, and Firebase.
                   Users can create, manage, and track custom workout routines.
                   The app is open-source and available on Google Play.
                 </p>
 
-                <div class="d-flex justify-content-center gap-3 mt-4">
+                <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
                   <a href="https://play.google.com/store/apps/details?id=com.alvaromoreno.gymtrack" target="_blank"
-                    class="btn btn-outline-primary d-flex align-items-center gap-2">
+                    rel="noopener noreferrer" class="btn btn-outline-primary d-flex align-items-center gap-2">
                     <i class="bi bi-google-play"></i> Google Play
                   </a>
 
-                  <a href="https://github.com/AlvaroMoreno39/GymTrack" target="_blank"
+                  <a href="https://github.com/AlvaroMoreno39/GymTrack" target="_blank" rel="noopener noreferrer"
                     class="btn btn-outline-primary d-flex align-items-center gap-2">
                     <i class="bi bi-github"></i> GitHub
                   </a>
                 </div>
               </div>
-            </div>
+            </article>
           </div>
 
-          <!-- Finance Tracker -->
           <div class="col-lg-6 d-flex">
-            <div class="card shadow-sm border-0 p-4 w-100"
-              style="border-radius: 1rem; background-color: var(--surface-color); transition: transform 0.3s ease, box-shadow 0.3s ease;">
-
+            <article class="project-card w-100">
               <img src="assets/img/portfolio/finance-tracker.png" class="img-fluid rounded mx-auto d-block mb-3"
-                alt="Personal Finance Tracker" style="max-height: 200px; object-fit: contain;">
+                alt="Personal Finance Tracker screenshot" loading="lazy" decoding="async">
 
               <div class="card-body text-start">
-                <h5 class="card-title">Personal Finance Tracker – Google Sheets</h5>
+                <h5 class="card-title">Personal Finance Tracker - Google Sheets</h5>
 
                 <p class="card-text">
                   A dynamic personal finance tracking template built in Google Sheets.
@@ -363,27 +300,23 @@
                   and building practical tools for everyday use.
                 </p>
 
-                <div class="d-flex justify-content-center gap-3 mt-4">
+                <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
                   <a href="https://docs.google.com/spreadsheets/d/1W_1lh_QdPpQjP3OXx-Np8bzInnwm02hqa5zQQ2Y0jDU/edit?usp=sharing"
-                    target="_blank" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                    target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary d-flex align-items-center gap-2">
                     <i class="bi bi-link-45deg"></i> View Template
                   </a>
                 </div>
               </div>
-            </div>
+            </article>
           </div>
 
-          <!-- Web Security Lab -->
           <div class="col-lg-8 d-flex">
-            <div class="card shadow-sm border-0 p-4 w-100"
-              style="border-radius: 1rem; background-color: var(--surface-color); transition: transform 0.3s ease, box-shadow 0.3s ease;">
-
-              <!-- Cambia la imagen por la que uses (puede ser captura del repo o un icono "web security") -->
+            <article class="project-card w-100">
               <img src="assets/img/portfolio/web-security-lab.png" class="img-fluid rounded mx-auto d-block mb-3"
-                alt="Web Security Lab" style="max-height: 200px; object-fit: contain;">
+                alt="Web Security Lab screenshot" loading="lazy" decoding="async">
 
               <div class="card-body text-start">
-                <h5 class="card-title">Web Security Lab – Secure Coding & Vulnerability Analysis</h5>
+                <h5 class="card-title">Web Security Lab - Secure Coding & Vulnerability Analysis</h5>
 
                 <p class="card-text">
                   A hands-on learning project to understand why common web vulnerabilities occur, their real-world
@@ -392,62 +325,49 @@
                 </p>
 
                 <p class="card-text mb-2"><strong>Topics covered:</strong></p>
-                <ul class="mb-3" style="padding-left: 1.2rem;">
+                <ul class="mb-3 ps-3">
                   <li>Reflected XSS, Stored XSS, DOM-based XSS</li>
-                  <li>SQL Injection (login & insert)</li>
+                  <li>SQL Injection (login and insert)</li>
                   <li>Secure API usage with prepared statements</li>
                 </ul>
 
                 <p class="card-text mb-2"><strong>Environment:</strong></p>
-                <ul class="mb-3" style="padding-left: 1.2rem;">
+                <ul class="mb-3 ps-3">
                   <li>Ubuntu Server VM</li>
                   <li>Apache, PHP, MySQL</li>
                   <li>Local and controlled setup (educational purposes only)</li>
                 </ul>
 
-                <div class="d-flex justify-content-center gap-3 mt-4">
-                  <!-- Cambia este enlace por el repo real -->
+                <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
                   <a href="https://github.com/AlvaroMoreno39/web-security-lab" target="_blank"
-                    class="btn btn-outline-primary d-flex align-items-center gap-2">
+                    rel="noopener noreferrer" class="btn btn-outline-primary d-flex align-items-center gap-2">
                     <i class="bi bi-github"></i> GitHub
                   </a>
                 </div>
 
-                <p class="card-text mt-3" style="font-size: 0.95rem; opacity: 0.9;">
+                <p class="card-text mt-3 text-muted">
                   Documented learning: where each issue appears, how it can be exploited, its impact, and the correct
                   mitigation.
                 </p>
               </div>
-            </div>
+            </article>
           </div>
-
-
         </div>
       </div>
-
     </section>
-    <!-- /Portfolio Section -->
 
-
-
-    <!-- Contact Section -->
     <section id="contact" class="contact section">
-
-      <!-- Section Title -->
       <div class="container section-title" data-aos="fade-up">
         <h2>Contact</h2>
         <p>
-          If you’d like to get in touch, feel free to reach out through the channels below.
+          If you would like to get in touch, feel free to reach out through the channels below.
         </p>
       </div>
-      <!-- End Section Title -->
 
       <div class="container" data-aos="fade-up" data-aos-delay="100">
         <div class="row justify-content-center">
-
           <div class="col-lg-6 col-md-8">
             <div class="info-wrap d-flex flex-column gap-4">
-
               <div class="info-item d-flex align-items-start">
                 <i class="bi bi-geo-alt flex-shrink-0"></i>
                 <div>
@@ -460,11 +380,7 @@
                 <i class="bi bi-envelope flex-shrink-0"></i>
                 <div>
                   <h3>Email</h3>
-                  <p>
-                    <a href="mailto:amorenolumbreras@gmail.com">
-                      amorenolumbreras@gmail.com
-                    </a>
-                  </p>
+                  <p><a href="mailto:amorenolumbreras@gmail.com">amorenolumbreras@gmail.com</a></p>
                 </div>
               </div>
 
@@ -473,9 +389,8 @@
                 <div>
                   <h3>LinkedIn</h3>
                   <p>
-                    <a href="https://www.linkedin.com/in/álvaro-moreno-lumbreras-0bb9ba310/" target="_blank">
-                      Álvaro Moreno Lumbreras
-                    </a>
+                    <a href="https://www.linkedin.com/in/alvaro-moreno-lumbreras-0bb9ba310/" target="_blank"
+                      rel="noopener noreferrer">Alvaro Moreno Lumbreras</a>
                   </p>
                 </div>
               </div>
@@ -484,11 +399,8 @@
                 <i class="bi bi-github flex-shrink-0"></i>
                 <div>
                   <h3>GitHub</h3>
-                  <p>
-                    <a href="https://github.com/AlvaroMoreno39" target="_blank">
-                      github.com/AlvaroMoreno39
-                    </a>
-                  </p>
+                  <p><a href="https://github.com/AlvaroMoreno39" target="_blank"
+                      rel="noopener noreferrer">github.com/AlvaroMoreno39</a></p>
                 </div>
               </div>
 
@@ -496,66 +408,35 @@
                 <i class="bi bi-file-earmark-arrow-down flex-shrink-0"></i>
                 <div>
                   <h3>Curriculum Vitae</h3>
-                  <p>
-                    <a href="assets/files/AlvaroMoreno_CV.pdf" download>
-                      Download my CV (PDF)
-                    </a>
-                  </p>
+                  <p><a href="assets/files/AlvaroMoreno_CV.pdf" download>Download my CV (PDF)</a></p>
                 </div>
               </div>
-
             </div>
           </div>
-
         </div>
       </div>
-
     </section>
-    <!-- /Contact Section -->
-
-
   </main>
 
   <footer id="footer" class="footer position-relative light-background">
-
     <div class="container">
       <div class="copyright text-center ">
-        <p>© <span id="year"></span> <strong class="px-1 sitename">Álvaro Moreno Lumbreras</strong>. All Rights
-          Reserved.</p>
-        <script>
-          document.getElementById("year").textContent = new Date().getFullYear();
-        </script>
+        <p>&copy; <span id="year"></span> <strong class="px-1 sitename">Alvaro Moreno Lumbreras</strong>. All rights
+          reserved.</p>
       </div>
       <div class="credits">
-        Created with ❤️ by Álvaro Moreno Lumbreras
+        Created with dedication by Alvaro Moreno Lumbreras
       </div>
     </div>
-
   </footer>
 
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"
+    aria-label="Scroll to top"><i class="bi bi-arrow-up-short"></i></a>
 
-  <!-- Scroll Top -->
-  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i
-      class="bi bi-arrow-up-short"></i></a>
-
-  <!-- Preloader -->
-  <div id="preloader"></div>
-
-  <!-- Vendor JS Files -->
-  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/vendor/php-email-form/validate.js"></script>
-  <script src="assets/vendor/aos/aos.js"></script>
-  <script src="assets/vendor/typed.js/typed.umd.js"></script>
-  <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
-  <script src="assets/vendor/waypoints/noframework.waypoints.js"></script>
-  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
-  <script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
-  <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
-  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
-
-  <!-- Main JS File -->
-  <script src="assets/js/main.js"></script>
-
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js" defer></script>
+  <script src="assets/vendor/aos/aos.js" defer></script>
+  <script src="assets/vendor/typed.js/typed.umd.js" defer></script>
+  <script src="assets/js/main.js" defer></script>
 </body>
 
 </html>

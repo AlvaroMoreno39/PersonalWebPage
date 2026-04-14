@@ -1,229 +1,270 @@
-/**
-* Template Name: iPortfolio
-* Template URL: https://bootstrapmade.com/iportfolio-bootstrap-portfolio-websites-template/
-* Updated: Jun 29 2024 with Bootstrap v5.3.3
-* Author: BootstrapMade.com
-* License: https://bootstrapmade.com/license/
-*/
-
-(function() {
+﻿(function () {
   "use strict";
 
-  /**
-   * Header toggle
-   */
-  const headerToggleBtn = document.querySelector('.header-toggle');
+  const header = document.querySelector("#header");
+  const headerToggleBtn = document.querySelector(".header-toggle");
+  const navmenuLinks = Array.from(document.querySelectorAll("#navmenu a"));
+  const sectionNodes = Array.from(document.querySelectorAll("main section[id]"));
 
   function headerToggle() {
-    document.querySelector('#header').classList.toggle('header-show');
-    headerToggleBtn.classList.toggle('bi-list');
-    headerToggleBtn.classList.toggle('bi-x');
+    if (!header || !headerToggleBtn) return;
+    header.classList.toggle("header-show");
+    headerToggleBtn.classList.toggle("bi-list");
+    headerToggleBtn.classList.toggle("bi-x");
   }
-  headerToggleBtn.addEventListener('click', headerToggle);
 
-  /**
-   * Hide mobile nav on same-page/hash links
-   */
-  document.querySelectorAll('#navmenu a').forEach(navmenu => {
-    navmenu.addEventListener('click', () => {
-      if (document.querySelector('.header-show')) {
-        headerToggle();
+  function closeMobileMenu() {
+    if (header && header.classList.contains("header-show")) {
+      headerToggle();
+    }
+  }
+
+  function setActiveNavLink(hash) {
+    if (!hash || !hash.startsWith("#")) return;
+
+    navmenuLinks.forEach((link) => {
+      const href = link.getAttribute("href") || "";
+      if (!href.startsWith("#")) return;
+      link.classList.toggle("active", href === hash);
+    });
+  }
+
+  function updateActiveNavOnScroll() {
+    if (!sectionNodes.length) return;
+
+    const scrollPosition = window.scrollY + window.innerHeight * 0.28;
+    let currentSectionId = sectionNodes[0].id;
+
+    sectionNodes.forEach((section) => {
+      if (scrollPosition >= section.offsetTop) {
+        currentSectionId = section.id;
       }
     });
 
-  });
-
-  /**
-   * Toggle mobile nav dropdowns
-   */
-  document.querySelectorAll('.navmenu .toggle-dropdown').forEach(navmenu => {
-    navmenu.addEventListener('click', function(e) {
-      e.preventDefault();
-      this.parentNode.classList.toggle('active');
-      this.parentNode.nextElementSibling.classList.toggle('dropdown-active');
-      e.stopImmediatePropagation();
-    });
-  });
-
-  /**
-   * Preloader
-   */
-  const preloader = document.querySelector('#preloader');
-  if (preloader) {
-    window.addEventListener('load', () => {
-      preloader.remove();
-    });
+    setActiveNavLink(`#${currentSectionId}`);
   }
 
-  /**
-   * Scroll top button
-   */
-  let scrollTop = document.querySelector('.scroll-top');
+  if (headerToggleBtn) {
+    headerToggleBtn.addEventListener("click", headerToggle);
+  }
+
+  navmenuLinks.forEach((navmenuLink) => {
+    navmenuLink.addEventListener("click", (event) => {
+      const href = navmenuLink.getAttribute("href") || "";
+
+      if (href.startsWith("#")) {
+        const section = document.querySelector(href);
+        if (section) {
+          event.preventDefault();
+          setActiveNavLink(href);
+          section.scrollIntoView({ behavior: "smooth", block: "start" });
+
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, "", href);
+          }
+        }
+      }
+
+      closeMobileMenu();
+    });
+  });
+
+  const scrollTop = document.querySelector(".scroll-top");
 
   function toggleScrollTop() {
-    if (scrollTop) {
-      window.scrollY > 100 ? scrollTop.classList.add('active') : scrollTop.classList.remove('active');
+    if (!scrollTop) return;
+    if (window.scrollY > 100) {
+      scrollTop.classList.add("active");
+    } else {
+      scrollTop.classList.remove("active");
     }
   }
-  scrollTop.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
+
+  if (scrollTop) {
+    scrollTop.addEventListener("click", (event) => {
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
-  });
+  }
 
-  window.addEventListener('load', toggleScrollTop);
-  document.addEventListener('scroll', toggleScrollTop);
-
-  /**
-   * Animation on scroll function and init
-   */
-  function aosInit() {
+  function initAos() {
+    if (typeof AOS === "undefined") return;
     AOS.init({
-      duration: 600,
-      easing: 'ease-in-out',
+      duration: 650,
+      easing: "ease-out-cubic",
       once: true,
-      mirror: false
+      mirror: false,
     });
   }
-  window.addEventListener('load', aosInit);
 
-  /**
-   * Init typed.js
-   */
-  const selectTyped = document.querySelector('.typed');
-  if (selectTyped) {
-    let typed_strings = selectTyped.getAttribute('data-typed-items');
-    typed_strings = typed_strings.split(',');
-    new Typed('.typed', {
-      strings: typed_strings,
+  function initTyped() {
+    const selectTyped = document.querySelector(".typed");
+    if (!selectTyped || typeof Typed === "undefined") return;
+
+    let typedStrings = selectTyped.getAttribute("data-typed-items") || "";
+    typedStrings = typedStrings.split(",").map((item) => item.trim()).filter(Boolean);
+    if (!typedStrings.length) return;
+
+    new Typed(".typed", {
+      strings: typedStrings,
       loop: true,
-      typeSpeed: 100,
-      backSpeed: 50,
-      backDelay: 2000
+      typeSpeed: 70,
+      backSpeed: 35,
+      backDelay: 1600,
     });
   }
 
-  /**
-   * Initiate Pure Counter
-   */
-  new PureCounter();
+  function setCurrentYear() {
+    const yearNode = document.querySelector("#year");
+    if (yearNode) {
+      yearNode.textContent = String(new Date().getFullYear());
+    }
+  }
 
-  /**
-   * Animate the skills items on reveal
-   */
-  let skillsAnimation = document.querySelectorAll('.skills-animation');
-  skillsAnimation.forEach((item) => {
-    new Waypoint({
-      element: item,
-      offset: '80%',
-      handler: function(direction) {
-        let progress = item.querySelectorAll('.progress .progress-bar');
-        progress.forEach(el => {
-          el.style.width = el.getAttribute('aria-valuenow') + '%';
-        });
+  function initWriteupTagLimit() {
+    const writeupCards = Array.from(document.querySelectorAll(".writeup-card"));
+    if (!writeupCards.length) return;
+
+    const MAX_TAGS_PER_CARD = 5;
+
+    writeupCards.forEach((card) => {
+      const tagList = card.querySelector(".tag-list");
+      if (!tagList || tagList.dataset.processed === "true") return;
+
+      const tags = Array.from(tagList.querySelectorAll(".tag"));
+      if (tags.length <= MAX_TAGS_PER_CARD) {
+        tagList.dataset.processed = "true";
+        return;
       }
+
+      tags.forEach((tag, index) => {
+        if (index >= MAX_TAGS_PER_CARD) {
+          tag.classList.add("tag-hidden");
+          tag.setAttribute("aria-hidden", "true");
+        }
+      });
+
+      const hiddenCount = tags.length - MAX_TAGS_PER_CARD;
+      const moreTag = document.createElement("span");
+      moreTag.className = "tag tag-overflow";
+      moreTag.textContent = `+${hiddenCount} more`;
+      tagList.appendChild(moreTag);
+      tagList.dataset.processed = "true";
     });
-  });
+  }
 
-  /**
-   * Initiate glightbox
-   */
-  const glightbox = GLightbox({
-    selector: '.glightbox'
-  });
+  function initWriteupFilters() {
+    const writeupCards = Array.from(document.querySelectorAll(".writeup-card"));
+    const difficultySelect = document.querySelector("#filter-difficulty");
+    const osSelect = document.querySelector("#filter-os");
+    const techniqueSelect = document.querySelector("#filter-technique");
+    const resetButton = document.querySelector("#filter-reset");
 
-  /**
-   * Init isotope layout and filters
-   */
-  document.querySelectorAll('.isotope-layout').forEach(function(isotopeItem) {
-    let layout = isotopeItem.getAttribute('data-layout') ?? 'masonry';
-    let filter = isotopeItem.getAttribute('data-default-filter') ?? '*';
-    let sort = isotopeItem.getAttribute('data-sort') ?? 'original-order';
+    if (!writeupCards.length || !difficultySelect || !osSelect || !techniqueSelect) return;
 
-    let initIsotope;
-    imagesLoaded(isotopeItem.querySelector('.isotope-container'), function() {
-      initIsotope = new Isotope(isotopeItem.querySelector('.isotope-container'), {
-        itemSelector: '.isotope-item',
-        layoutMode: layout,
-        filter: filter,
-        sortBy: sort
+    const normalizeList = (value) =>
+      value
+        .split(",")
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean);
+
+    const applyFilters = () => {
+      const difficulty = difficultySelect.value;
+      const os = osSelect.value;
+      const technique = techniqueSelect.value;
+
+      writeupCards.forEach((card) => {
+        const cardDifficulty = (card.dataset.difficulty || "").toLowerCase();
+        const cardOs = (card.dataset.os || "").toLowerCase();
+        const cardTechniques = normalizeList(card.dataset.techniques || "");
+
+        const matchesDifficulty = difficulty === "all" || cardDifficulty === difficulty;
+        const matchesOs = os === "all" || cardOs === os;
+        const matchesTechnique = technique === "all" || cardTechniques.includes(technique);
+
+        const isMatch = matchesDifficulty && matchesOs && matchesTechnique;
+
+        if (isMatch) {
+          card.classList.remove("is-hidden", "is-leaving");
+          card.classList.add("is-visible");
+          return;
+        }
+
+        if (!card.classList.contains("is-hidden")) {
+          card.classList.add("is-leaving");
+          window.setTimeout(() => {
+            card.classList.remove("is-visible", "is-leaving");
+            card.classList.add("is-hidden");
+          }, 180);
+        }
+      });
+    };
+
+    const resetFilters = () => {
+      difficultySelect.value = "all";
+      osSelect.value = "all";
+      techniqueSelect.value = "all";
+      applyFilters();
+    };
+
+    difficultySelect.addEventListener("change", applyFilters);
+    osSelect.addEventListener("change", applyFilters);
+    techniqueSelect.addEventListener("change", applyFilters);
+
+    if (resetButton) {
+      resetButton.addEventListener("click", resetFilters);
+    }
+
+    applyFilters();
+  }
+
+  function initPageTransitions() {
+    document.body.classList.add("page-transition-in");
+
+    const transitionLinks = Array.from(
+      document.querySelectorAll(".writeup-card, .back-link")
+    );
+    if (!transitionLinks.length) return;
+
+    transitionLinks.forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const href = link.getAttribute("href");
+        if (!href || href.startsWith("#")) return;
+        if (link.getAttribute("target") === "_blank") return;
+
+        event.preventDefault();
+        document.body.classList.add("page-transition-out");
+        window.setTimeout(() => {
+          window.location.href = href;
+        }, 180);
       });
     });
-
-    isotopeItem.querySelectorAll('.isotope-filters li').forEach(function(filters) {
-      filters.addEventListener('click', function() {
-        isotopeItem.querySelector('.isotope-filters .filter-active').classList.remove('filter-active');
-        this.classList.add('filter-active');
-        initIsotope.arrange({
-          filter: this.getAttribute('data-filter')
-        });
-        if (typeof aosInit === 'function') {
-          aosInit();
-        }
-      }, false);
-    });
-
-  });
-
-  /**
-   * Init swiper sliders
-   */
-  function initSwiper() {
-    document.querySelectorAll(".init-swiper").forEach(function(swiperElement) {
-      let config = JSON.parse(
-        swiperElement.querySelector(".swiper-config").innerHTML.trim()
-      );
-
-      if (swiperElement.classList.contains("swiper-tab")) {
-        initSwiperWithCustomPagination(swiperElement, config);
-      } else {
-        new Swiper(swiperElement, config);
-      }
-    });
   }
 
-  window.addEventListener("load", initSwiper);
+  window.addEventListener("load", () => {
+    toggleScrollTop();
+    initAos();
+    initTyped();
+    setCurrentYear();
+    initWriteupTagLimit();
+    initWriteupFilters();
+    initPageTransitions();
 
-  /**
-   * Correct scrolling position upon page load for URLs containing hash links.
-   */
-  window.addEventListener('load', function(e) {
     if (window.location.hash) {
-      if (document.querySelector(window.location.hash)) {
-        setTimeout(() => {
-          let section = document.querySelector(window.location.hash);
-          let scrollMarginTop = getComputedStyle(section).scrollMarginTop;
-          window.scrollTo({
-            top: section.offsetTop - parseInt(scrollMarginTop),
-            behavior: 'smooth'
-          });
-        }, 100);
-      }
+      setActiveNavLink(window.location.hash);
+    } else {
+      updateActiveNavOnScroll();
     }
   });
 
-  /**
-   * Navmenu Scrollspy
-   */
-  let navmenulinks = document.querySelectorAll('.navmenu a');
+  document.addEventListener("scroll", () => {
+    toggleScrollTop();
+    updateActiveNavOnScroll();
+  });
 
-  function navmenuScrollspy() {
-    navmenulinks.forEach(navmenulink => {
-      if (!navmenulink.hash) return;
-      let section = document.querySelector(navmenulink.hash);
-      if (!section) return;
-      let position = window.scrollY + 200;
-      if (position >= section.offsetTop && position <= (section.offsetTop + section.offsetHeight)) {
-        document.querySelectorAll('.navmenu a.active').forEach(link => link.classList.remove('active'));
-        navmenulink.classList.add('active');
-      } else {
-        navmenulink.classList.remove('active');
-      }
-    })
-  }
-  window.addEventListener('load', navmenuScrollspy);
-  document.addEventListener('scroll', navmenuScrollspy);
-
+  window.addEventListener("hashchange", () => {
+    if (window.location.hash) {
+      setActiveNavLink(window.location.hash);
+    }
+  });
 })();
