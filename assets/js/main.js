@@ -32,7 +32,7 @@
   function updateActiveNavOnScroll() {
     if (!sectionNodes.length) return;
 
-    const scrollPosition = window.scrollY + window.innerHeight * 0.28;
+    const scrollPosition = window.scrollY + 140;
     let currentSectionId = sectionNodes[0].id;
 
     sectionNodes.forEach((section) => {
@@ -159,6 +159,7 @@
     const osSelect = document.querySelector("#filter-os");
     const techniqueSelect = document.querySelector("#filter-technique");
     const resetButton = document.querySelector("#filter-reset");
+    const emptyState = document.querySelector("#writeups-empty");
 
     if (!writeupCards.length || !difficultySelect || !osSelect || !techniqueSelect) return;
 
@@ -172,6 +173,7 @@
       const difficulty = difficultySelect.value;
       const os = osSelect.value;
       const technique = techniqueSelect.value;
+      let visibleCount = 0;
 
       writeupCards.forEach((card) => {
         const cardDifficulty = (card.dataset.difficulty || "").toLowerCase();
@@ -185,8 +187,12 @@
         const isMatch = matchesDifficulty && matchesOs && matchesTechnique;
 
         if (isMatch) {
+          visibleCount += 1;
           card.classList.remove("is-hidden", "is-leaving");
-          card.classList.add("is-visible");
+          card.style.display = "block";
+          window.requestAnimationFrame(() => {
+            card.classList.add("is-visible");
+          });
           return;
         }
 
@@ -195,9 +201,14 @@
           window.setTimeout(() => {
             card.classList.remove("is-visible", "is-leaving");
             card.classList.add("is-hidden");
+            card.style.display = "none";
           }, 180);
         }
       });
+
+      if (emptyState) {
+        emptyState.classList.toggle("active", visibleCount === 0);
+      }
     };
 
     const resetFilters = () => {
@@ -251,7 +262,16 @@
     initPageTransitions();
 
     if (window.location.hash) {
-      setActiveNavLink(window.location.hash);
+      const hashSection = document.querySelector(window.location.hash);
+      if (hashSection) {
+        window.setTimeout(() => {
+          hashSection.scrollIntoView({ behavior: "auto", block: "start" });
+          setActiveNavLink(window.location.hash);
+          updateActiveNavOnScroll();
+        }, 40);
+      } else {
+        setActiveNavLink(window.location.hash);
+      }
     } else {
       updateActiveNavOnScroll();
     }

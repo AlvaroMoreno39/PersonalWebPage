@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -51,6 +51,8 @@
         <li><a href="#about"><i class="bi bi-person navicon"></i>About</a></li>
         <li><a href="#resume"><i class="bi bi-file-earmark-text navicon"></i>Resume</a></li>
         <li><a href="#portfolio"><i class="bi bi-images navicon"></i>Portfolio</a></li>
+        <li><a href="#writeups"><i class="bi bi-journal-code navicon"></i>Writeups</a></li>
+        <li><a href="#certifications"><i class="bi bi-patch-check navicon"></i>Certifications</a></li>
         <li><a href="#contact"><i class="bi bi-envelope navicon"></i>Contact</a></li>
       </ul>
     </nav>
@@ -122,49 +124,6 @@
               principles that I apply both in my learning process and professional growth.
             </p>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="skills" class="skills section light-background">
-      <div class="container section-title" data-aos="fade-up">
-        <h2>Skills</h2>
-        <p>Core tools I use for IT systems and cybersecurity training:</p>
-      </div>
-
-      <div class="container" data-aos="fade-up" data-aos-delay="100">
-        <div class="skills-container d-flex flex-wrap justify-content-center mb-4">
-          <div class="skill-item"><img src="assets/img/icons/ubuntu.png" alt="Linux" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/windows.png" alt="Windows" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/bash.png" alt="Bash" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/python.png" alt="Python" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/vmware.png" alt="Virtualization with VMware"
-              class="skill-icon" loading="lazy" decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/mysql.png" alt="MySQL" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/git.png" alt="Git" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/github.png" alt="GitHub" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-        </div>
-
-        <div class="text-center mb-3">
-          <p><i>Additional background:</i></p>
-        </div>
-
-        <div class="skills-container d-flex flex-wrap justify-content-center">
-          <div class="skill-item"><img src="assets/img/icons/java.png" alt="Java" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/kotlin.png" alt="Kotlin" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/html.png" alt="HTML" class="skill-icon" loading="lazy"
-              decoding="async"></div>
-          <div class="skill-item"><img src="assets/img/icons/css.png" alt="CSS" class="skill-icon" loading="lazy"
-              decoding="async"></div>
         </div>
       </div>
     </section>
@@ -351,6 +310,145 @@
                 </p>
               </div>
             </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="writeups" class="writeups-preview section light-background">
+      <div class="container section-title" data-aos="fade-up">
+        <h2>Writeups</h2>
+        <p>Short, tagged writeups with direct links to full walkthroughs.</p>
+      </div>
+
+      <div class="container" data-aos="fade-up" data-aos-delay="100">
+        <div class="writeups-filters" aria-label="Writeup filters">
+          <div class="filter-group">
+            <label for="filter-difficulty">Difficulty</label>
+            <select id="filter-difficulty">
+              <option value="all">All</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-os">OS</label>
+            <select id="filter-os">
+              <option value="all">All</option>
+              <option value="linux">Linux</option>
+              <option value="windows">Windows</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-technique">Technique</label>
+            <select id="filter-technique">
+              <option value="all">All</option>
+              <option value="web">Web</option>
+              <option value="enumeration">Enumeration</option>
+              <option value="credential-harvesting">Credential Harvesting</option>
+              <option value="lateral-movement">Lateral Movement</option>
+              <option value="privilege-escalation">Privilege Escalation</option>
+              <option value="active-directory">Active Directory</option>
+              <option value="siem">SIEM</option>
+              <option value="log-analysis">Log Analysis</option>
+              <option value="backup-abuse">Backup Abuse</option>
+            </select>
+          </div>
+          <button class="filter-reset" type="button" id="filter-reset">Reset</button>
+        </div>
+        <div class="writeups-grid">
+          <a class="writeup-card" href="writeups/lame-htb-easy.html" data-difficulty="easy" data-os="linux"
+            data-techniques="enumeration,privilege-escalation">
+            <div class="writeup-card-body">
+              <h3>Lame - HTB</h3>
+              <p>Overview: classic Linux easy machine focused on service enumeration, exploit selection, and a clean privilege escalation chain.</p>
+              <div class="tag-list">
+                <span class="tag">Red Team</span>
+                <span class="tag">Easy</span>
+                <span class="tag">Linux</span>
+                <span class="tag">Enumeration</span>
+                <span class="tag">Privilege Escalation</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/monteverde-htb-medium.html" data-difficulty="medium" data-os="windows"
+            data-techniques="enumeration,active-directory,credential-harvesting,lateral-movement">
+            <div class="writeup-card-body">
+              <h3>Monteverde - HTB</h3>
+              <p>Overview: Active Directory path covering user/domain enumeration, credential discovery, and controlled lateral movement.</p>
+              <div class="tag-list">
+                <span class="tag">Red Team</span>
+                <span class="tag">Medium</span>
+                <span class="tag">Windows</span>
+                <span class="tag">Active Directory</span>
+                <span class="tag">Enumeration</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/bluelabs01-htb-easy.html" data-difficulty="easy" data-os="linux"
+            data-techniques="siem,log-analysis">
+            <div class="writeup-card-body">
+              <h3>BlueLabs01 - HTB</h3>
+              <p>Overview: blue-team oriented triage with SIEM workflow, suspicious activity validation, and practical response notes.</p>
+              <div class="tag-list">
+                <span class="tag">Blue Team</span>
+                <span class="tag">Easy</span>
+                <span class="tag">SIEM</span>
+                <span class="tag">Log Analysis</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/codeparttwo-htb-easy.html" data-difficulty="easy" data-os="linux"
+            data-techniques="web,enumeration,credential-harvesting,lateral-movement,privilege-escalation,backup-abuse">
+            <div class="writeup-card-body">
+              <h3>CodePartTwo - HTB</h3>
+              <p>Overview: full red-team chain from vulnerable web editor exploitation to local credential harvesting and root compromise via backup abuse.</p>
+              <div class="tag-list">
+                <span class="tag">Red Team</span>
+                <span class="tag">Web Exploitation</span>
+                <span class="tag">RCE</span>
+                <span class="tag">Easy</span>
+                <span class="tag">Sandbox Escape</span>
+                <span class="tag">Reverse Shell</span>
+                <span class="tag">SQLite</span>
+                <span class="tag">Password Cracking</span>
+                <span class="tag">Lateral Movement</span>
+                <span class="tag">Privilege Escalation</span>
+                <span class="tag">Sudo Abuse</span>
+                <span class="tag">Linux</span>
+              </div>
+            </div>
+          </a>
+        </div>
+        <div class="writeups-empty" id="writeups-empty">No writeups match these filters yet. Try changing Difficulty, OS, or Technique.</div>
+      </div>
+    </section>
+
+    <section id="certifications" class="certifications section">
+      <div class="container section-title" data-aos="fade-up">
+        <h2>Certifications</h2>
+        <p>Concise list of certifications with status and dates.</p>
+      </div>
+
+      <div class="container" data-aos="fade-up" data-aos-delay="100">
+        <div class="certifications-list">
+          <div class="certification-item">
+            <div>
+              <h3>HTB Certified Junior Penetration Tester (CPTJ)</h3>
+              <p class="certification-meta">Status: In Progress | Target: 2026</p>
+            </div>
+            <a class="certification-link" href="writeups/lame-htb-easy.html">Related writeup</a>
+          </div>
+
+          <div class="certification-item">
+            <div>
+              <h3>Google Cybersecurity Certificate</h3>
+              <p class="certification-meta">Status: Completed | 2025</p>
+            </div>
           </div>
         </div>
       </div>
