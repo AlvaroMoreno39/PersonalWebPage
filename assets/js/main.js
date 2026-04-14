@@ -5,6 +5,7 @@
   const headerToggleBtn = document.querySelector(".header-toggle");
   const navmenuLinks = Array.from(document.querySelectorAll("#navmenu a"));
   const sectionNodes = Array.from(document.querySelectorAll("main section[id]"));
+  let navScrollLockUntil = 0;
 
   function headerToggle() {
     if (!header || !headerToggleBtn) return;
@@ -31,6 +32,7 @@
 
   function updateActiveNavOnScroll() {
     if (!sectionNodes.length) return;
+    if (Date.now() < navScrollLockUntil) return;
 
     const scrollPosition = window.scrollY + 140;
     let currentSectionId = sectionNodes[0].id;
@@ -264,10 +266,11 @@
     if (window.location.hash) {
       const hashSection = document.querySelector(window.location.hash);
       if (hashSection) {
+        navScrollLockUntil = Date.now() + 1200;
         window.setTimeout(() => {
           hashSection.scrollIntoView({ behavior: "auto", block: "start" });
           setActiveNavLink(window.location.hash);
-          updateActiveNavOnScroll();
+          navScrollLockUntil = Date.now() + 1200;
         }, 40);
       } else {
         setActiveNavLink(window.location.hash);

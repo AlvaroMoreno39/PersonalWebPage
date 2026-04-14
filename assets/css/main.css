@@ -389,7 +389,7 @@ section,
   display: block;
   padding: 1.2rem 1.3rem;
   color: inherit;
-  transition: transform 0.24s ease, box-shadow 0.24s ease, opacity 0.24s ease;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, opacity 0.24s ease;
   opacity: 1;
   transform: translateY(0);
   transform-origin: center;
@@ -397,12 +397,12 @@ section,
 }
 
 .writeup-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 22px 32px rgba(15, 23, 42, 0.14);
+  transform: translateY(-7px) scale(1.035);
+  box-shadow: 0 26px 38px rgba(15, 23, 42, 0.18);
 }
 
 .writeup-card:active {
-  transform: translateY(-1px) scale(0.995);
+  transform: translateY(-2px) scale(0.985);
 }
 
 .writeup-card.is-hidden {
