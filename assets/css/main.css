@@ -36,16 +36,15 @@ body {
   font-family: var(--default-font);
   line-height: 1.6;
   opacity: 1;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.16s ease;
 }
 
 body.page-transition-in {
-  animation: pageEnter 0.26s ease;
+  animation: pageEnter 0.16s ease;
 }
 
 body.page-transition-out {
   opacity: 0;
-  transform: translateY(8px);
 }
 
 a {
@@ -435,12 +434,13 @@ section,
   display: flex;
   flex-direction: column;
   height: 100%;
-  gap: 10px;
+  gap: 12px;
 }
 
 .writeup-card h3 {
   font-size: 1.1rem;
   margin: 0;
+  line-height: 1.3;
 }
 
 .writeup-card p {
@@ -452,13 +452,27 @@ section,
   overflow: hidden;
   text-overflow: ellipsis;
   min-height: 4.6em;
+  line-height: 1.55;
 }
 
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 6px;
+  gap: 9px 7px;
   margin-top: auto;
+  padding-top: 2px;
+}
+
+.writeup-detail .tag-list {
+  margin: 14px 0;
+}
+
+.writeup-detail h2 {
+  margin-top: 14px;
+}
+
+.writeup-detail h1 {
+  margin-bottom: 0;
 }
 
 .tag {
@@ -650,12 +664,12 @@ section,
   margin-top: 12px;
   font-weight: 600;
   color: #0f766e;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 
 .back-link.top {
   margin-top: 0;
   font-size: 0.92rem;
-  transition: transform 0.2s ease;
 }
 
 .back-link.top:hover {
@@ -665,6 +679,10 @@ section,
 .back-link.bottom {
   margin-top: 18px;
   font-size: 0.92rem;
+}
+
+.back-link.bottom:hover {
+  transform: translateX(-2px);
 }
 
 @keyframes cardFadeIn {
@@ -704,11 +722,9 @@ section,
 @keyframes pageEnter {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
