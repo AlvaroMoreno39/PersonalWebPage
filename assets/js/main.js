@@ -7,6 +7,15 @@
   const sectionNodes = Array.from(document.querySelectorAll("main section[id]"));
   let navScrollLockUntil = 0;
 
+  function alignToSectionHash(hash) {
+    if (!hash || !hash.startsWith("#")) return;
+    const target = document.querySelector(hash);
+    if (!target) return;
+
+    const targetTop = target.getBoundingClientRect().top + window.pageYOffset - 10;
+    window.scrollTo({ top: targetTop, behavior: "auto" });
+  }
+
   function headerToggle() {
     if (!header || !headerToggleBtn) return;
     header.classList.toggle("header-show");
@@ -266,12 +275,16 @@
     if (window.location.hash) {
       const hashSection = document.querySelector(window.location.hash);
       if (hashSection) {
-        navScrollLockUntil = Date.now() + 1200;
+        navScrollLockUntil = Date.now() + 1800;
         window.setTimeout(() => {
-          hashSection.scrollIntoView({ behavior: "auto", block: "start" });
+          alignToSectionHash(window.location.hash);
           setActiveNavLink(window.location.hash);
-          navScrollLockUntil = Date.now() + 1200;
+          navScrollLockUntil = Date.now() + 1800;
         }, 40);
+
+        window.setTimeout(() => {
+          alignToSectionHash(window.location.hash);
+        }, 420);
       } else {
         setActiveNavLink(window.location.hash);
       }
@@ -287,6 +300,8 @@
 
   window.addEventListener("hashchange", () => {
     if (window.location.hash) {
+      navScrollLockUntil = Date.now() + 1400;
+      alignToSectionHash(window.location.hash);
       setActiveNavLink(window.location.hash);
     }
   });

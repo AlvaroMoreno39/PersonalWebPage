@@ -578,8 +578,8 @@ section,
   position: fixed;
   right: 16px;
   bottom: -15px;
-  width: 56px;
-  height: 56px;
+  width: 42px;
+  height: 42px;
   border-radius: 999px;
   background: var(--accent-color);
   color: #fff;
@@ -593,7 +593,7 @@ section,
 }
 
 .scroll-top i {
-  font-size: 2rem;
+  font-size: 1.6rem;
   line-height: 1;
 }
 
@@ -745,5 +745,14 @@ section,
 
   .filter-reset {
     width: 100%;
+  }
+
+  .scroll-top {
+    width: 46px;
+    height: 46px;
+  }
+
+  .scroll-top i {
+    font-size: 1.75rem;
   }
 }
