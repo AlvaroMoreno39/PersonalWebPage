@@ -425,6 +425,9 @@ section,
   display: block;
   opacity: 1;
   transform: translateY(0);
+}
+
+.writeup-card.is-entering {
   animation: cardFadeIn 0.34s ease;
 }
 

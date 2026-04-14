@@ -183,6 +183,7 @@
     const resetButton = document.querySelector("#filter-reset");
     const emptyState = document.querySelector("#writeups-empty");
     const hideTimers = new WeakMap();
+    const enterTimers = new WeakMap();
 
     if (!writeupCards.length || !difficultySelect || !osSelect || !techniqueSelect) return;
 
@@ -215,12 +216,34 @@
             window.clearTimeout(existingTimer);
             hideTimers.delete(card);
           }
+
+          const existingEnterTimer = enterTimers.get(card);
+          if (existingEnterTimer) {
+            window.clearTimeout(existingEnterTimer);
+            enterTimers.delete(card);
+          }
+
           visibleCount += 1;
+
+          const wasHidden =
+            card.classList.contains("is-hidden") || card.classList.contains("is-leaving");
+
           card.classList.remove("is-hidden", "is-leaving");
           card.style.display = "block";
-          window.requestAnimationFrame(() => {
+
+          if (wasHidden) {
+            card.classList.remove("is-visible", "is-entering");
+            void card.offsetWidth;
+            card.classList.add("is-visible", "is-entering");
+            const enterTimer = window.setTimeout(() => {
+              card.classList.remove("is-entering");
+              enterTimers.delete(card);
+            }, 320);
+            enterTimers.set(card, enterTimer);
+          } else {
             card.classList.add("is-visible");
-          });
+          }
+
           return;
         }
 
@@ -228,6 +251,12 @@
           if (existingTimer) {
             window.clearTimeout(existingTimer);
           }
+          const existingEnterTimer = enterTimers.get(card);
+          if (existingEnterTimer) {
+            window.clearTimeout(existingEnterTimer);
+            enterTimers.delete(card);
+          }
+          card.classList.remove("is-entering");
           card.classList.add("is-leaving");
           const timer = window.setTimeout(() => {
             card.classList.remove("is-visible", "is-leaving");
