@@ -55,6 +55,17 @@
     setActiveNavLink(`#${currentSectionId}`);
   }
 
+  let scrollTicking = false;
+  function onScroll() {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    window.requestAnimationFrame(() => {
+      toggleScrollTop();
+      updateActiveNavOnScroll();
+      scrollTicking = false;
+    });
+  }
+
   if (headerToggleBtn) {
     headerToggleBtn.addEventListener("click", headerToggle);
   }
@@ -171,6 +182,7 @@
     const techniqueSelect = document.querySelector("#filter-technique");
     const resetButton = document.querySelector("#filter-reset");
     const emptyState = document.querySelector("#writeups-empty");
+    const hideTimers = new WeakMap();
 
     if (!writeupCards.length || !difficultySelect || !osSelect || !techniqueSelect) return;
 
@@ -196,8 +208,13 @@
         const matchesTechnique = technique === "all" || cardTechniques.includes(technique);
 
         const isMatch = matchesDifficulty && matchesOs && matchesTechnique;
+        const existingTimer = hideTimers.get(card);
 
         if (isMatch) {
+          if (existingTimer) {
+            window.clearTimeout(existingTimer);
+            hideTimers.delete(card);
+          }
           visibleCount += 1;
           card.classList.remove("is-hidden", "is-leaving");
           card.style.display = "block";
@@ -208,12 +225,16 @@
         }
 
         if (!card.classList.contains("is-hidden")) {
+          if (existingTimer) {
+            window.clearTimeout(existingTimer);
+          }
           card.classList.add("is-leaving");
-          window.setTimeout(() => {
+          const timer = window.setTimeout(() => {
             card.classList.remove("is-visible", "is-leaving");
             card.classList.add("is-hidden");
             card.style.display = "none";
           }, 180);
+          hideTimers.set(card, timer);
         }
       });
 
@@ -293,10 +314,7 @@
     }
   });
 
-  document.addEventListener("scroll", () => {
-    toggleScrollTop();
-    updateActiveNavOnScroll();
-  });
+  document.addEventListener("scroll", onScroll, { passive: true });
 
   window.addEventListener("hashchange", () => {
     if (window.location.hash) {
