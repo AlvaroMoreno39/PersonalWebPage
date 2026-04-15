@@ -5,15 +5,19 @@
   const headerToggleBtn = document.querySelector(".header-toggle");
   const navmenuLinks = Array.from(document.querySelectorAll("#navmenu a"));
   const sectionNodes = Array.from(document.querySelectorAll("main section[id]"));
-  let navScrollLockUntil = 0;
+  let navRequestToken = 0;
 
-  function alignToSectionHash(hash) {
+  if ("scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+  }
+
+  function alignToSectionHash(hash, smooth = false) {
     if (!hash || !hash.startsWith("#")) return;
     const target = document.querySelector(hash);
     if (!target) return;
 
-    const targetTop = target.getBoundingClientRect().top + window.pageYOffset - 10;
-    window.scrollTo({ top: targetTop, behavior: "auto" });
+    const targetTop = Math.max(target.offsetTop, 0);
+    window.scrollTo({ top: targetTop, behavior: smooth ? "smooth" : "auto" });
   }
 
   function headerToggle() {
@@ -41,16 +45,16 @@
 
   function updateActiveNavOnScroll() {
     if (!sectionNodes.length) return;
-    if (Date.now() < navScrollLockUntil) return;
-
-    const scrollPosition = window.scrollY + 140;
+    const scrollPosition = window.scrollY + 120;
     let currentSectionId = sectionNodes[0].id;
 
-    sectionNodes.forEach((section) => {
+    for (const section of sectionNodes) {
       if (scrollPosition >= section.offsetTop) {
         currentSectionId = section.id;
+      } else {
+        break;
       }
-    });
+    }
 
     setActiveNavLink(`#${currentSectionId}`);
   }
@@ -78,8 +82,13 @@
         const section = document.querySelector(href);
         if (section) {
           event.preventDefault();
+          const token = ++navRequestToken;
           setActiveNavLink(href);
-          section.scrollIntoView({ behavior: "smooth", block: "start" });
+          alignToSectionHash(href, false);
+          window.requestAnimationFrame(() => {
+            if (token !== navRequestToken) return;
+            alignToSectionHash(href, false);
+          });
 
           if (window.history && window.history.replaceState) {
             window.history.replaceState(null, "", href);
@@ -147,45 +156,146 @@
     const writeupCards = Array.from(document.querySelectorAll(".writeup-card"));
     if (!writeupCards.length) return;
 
-    const MAX_TAGS_PER_CARD = 5;
+    let resizeTimer = null;
 
-    writeupCards.forEach((card) => {
-      const tagList = card.querySelector(".tag-list");
-      if (!tagList || tagList.dataset.processed === "true") return;
+    const applyTagLimit = () => {
+      writeupCards.forEach((card) => {
+        if (card.classList.contains("is-hidden") || card.offsetParent === null) return;
 
-      const tags = Array.from(tagList.querySelectorAll(".tag"));
-      if (tags.length <= MAX_TAGS_PER_CARD) {
-        tagList.dataset.processed = "true";
-        return;
-      }
+        const tagList = card.querySelector(".tag-list");
+        if (!tagList) return;
 
-      tags.forEach((tag, index) => {
-        if (index >= MAX_TAGS_PER_CARD) {
+        const existingOverflow = tagList.querySelector(".tag-overflow");
+        if (existingOverflow) existingOverflow.remove();
+
+        const tags = Array.from(tagList.querySelectorAll(".tag:not(.tag-overflow)"));
+        if (!tags.length) return;
+
+        tags.forEach((tag) => {
+          tag.classList.remove("tag-hidden");
+          tag.removeAttribute("aria-hidden");
+        });
+
+        const maxHeight = parseFloat(window.getComputedStyle(tagList).maxHeight || "0");
+        if (!maxHeight || Number.isNaN(maxHeight)) return;
+
+        if (tagList.scrollHeight <= maxHeight) return;
+
+        let hiddenCount = 0;
+        const moreTag = document.createElement("span");
+        moreTag.className = "tag tag-overflow";
+        moreTag.textContent = "+0 more";
+        tagList.appendChild(moreTag);
+
+        for (let i = tags.length - 1; i >= 0; i -= 1) {
+          const tag = tags[i];
           tag.classList.add("tag-hidden");
           tag.setAttribute("aria-hidden", "true");
+          hiddenCount += 1;
+          moreTag.textContent = `+${hiddenCount} more`;
+
+          if (tagList.scrollHeight <= maxHeight) {
+            break;
+          }
         }
       });
+    };
 
-      const hiddenCount = tags.length - MAX_TAGS_PER_CARD;
-      const moreTag = document.createElement("span");
-      moreTag.className = "tag tag-overflow";
-      moreTag.textContent = `+${hiddenCount} more`;
-      tagList.appendChild(moreTag);
-      tagList.dataset.processed = "true";
+    window.requestAnimationFrame(applyTagLimit);
+
+    window.addEventListener("resize", () => {
+      if (resizeTimer) window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        applyTagLimit();
+      }, 120);
+    });
+
+    document.addEventListener("writeupCardsUpdated", () => {
+      window.requestAnimationFrame(applyTagLimit);
+    });
+  }
+
+  function initWriteupDescriptionFit() {
+    const writeupCards = Array.from(document.querySelectorAll(".writeup-card"));
+    if (!writeupCards.length) return;
+
+    let resizeTimer = null;
+
+    const fitDescriptions = () => {
+      writeupCards.forEach((card) => {
+        if (card.classList.contains("is-hidden") || card.offsetParent === null) return;
+
+        const description = card.querySelector(".writeup-card p");
+        const tagList = card.querySelector(".writeup-card .tag-list");
+        if (!description || !tagList) return;
+
+        if (!description.dataset.fullText) {
+          description.dataset.fullText = description.textContent.trim();
+        }
+
+        const fullText = description.dataset.fullText;
+        description.textContent = fullText;
+        description.style.maxHeight = "";
+
+        const descTop = description.getBoundingClientRect().top;
+        const tagsTop = tagList.getBoundingClientRect().top;
+        const availableHeight = Math.max(Math.floor(tagsTop - descTop - 6), 24);
+        description.style.maxHeight = `${availableHeight}px`;
+
+        if (description.scrollHeight <= description.clientHeight + 1) return;
+
+        let low = 0;
+        let high = fullText.length;
+        let best = "...";
+
+        while (low <= high) {
+          const mid = Math.floor((low + high) / 2);
+          const candidate = `${fullText.slice(0, mid).trimEnd()}...`;
+          description.textContent = candidate;
+
+          if (description.scrollHeight <= description.clientHeight + 1) {
+            best = candidate;
+            low = mid + 1;
+          } else {
+            high = mid - 1;
+          }
+        }
+
+        description.textContent = best;
+      });
+    };
+
+    window.requestAnimationFrame(fitDescriptions);
+
+    window.addEventListener("resize", () => {
+      if (resizeTimer) window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        fitDescriptions();
+      }, 120);
+    });
+
+    document.addEventListener("writeupCardsUpdated", () => {
+      window.requestAnimationFrame(fitDescriptions);
     });
   }
 
   function initWriteupFilters() {
     const writeupCards = Array.from(document.querySelectorAll(".writeup-card"));
+    const teamSelect = document.querySelector("#filter-team");
     const difficultySelect = document.querySelector("#filter-difficulty");
     const osSelect = document.querySelector("#filter-os");
     const techniqueSelect = document.querySelector("#filter-technique");
     const resetButton = document.querySelector("#filter-reset");
     const emptyState = document.querySelector("#writeups-empty");
-    const hideTimers = new WeakMap();
-    const enterTimers = new WeakMap();
+    const counterNode = document.querySelector("#writeups-counter");
+    const prevButton = document.querySelector("#writeups-prev");
+    const nextButton = document.querySelector("#writeups-next");
+    const pageInfo = document.querySelector("#writeups-page-info");
+    const PAGE_SIZE = 4;
+    let currentPage = 1;
+    let hasInitialized = false;
 
-    if (!writeupCards.length || !difficultySelect || !osSelect || !techniqueSelect) return;
+    if (!writeupCards.length || !teamSelect || !difficultySelect || !osSelect || !techniqueSelect) return;
 
     const normalizeList = (value) =>
       value
@@ -194,123 +304,133 @@
         .filter(Boolean);
 
     const applyFilters = () => {
+      const team = teamSelect.value;
       const difficulty = difficultySelect.value;
       const os = osSelect.value;
       const technique = techniqueSelect.value;
-      let visibleCount = 0;
+      const matchedCards = [];
 
       writeupCards.forEach((card) => {
+        const cardTeam = (card.dataset.team || "").toLowerCase();
         const cardDifficulty = (card.dataset.difficulty || "").toLowerCase();
         const cardOs = (card.dataset.os || "").toLowerCase();
         const cardTechniques = normalizeList(card.dataset.techniques || "");
 
+        const matchesTeam = team === "all" || cardTeam === team;
         const matchesDifficulty = difficulty === "all" || cardDifficulty === difficulty;
         const matchesOs = os === "all" || cardOs === os;
         const matchesTechnique = technique === "all" || cardTechniques.includes(technique);
 
-        const isMatch = matchesDifficulty && matchesOs && matchesTechnique;
-        const existingTimer = hideTimers.get(card);
+        const isMatch = matchesTeam && matchesDifficulty && matchesOs && matchesTechnique;
+        if (isMatch) matchedCards.push(card);
+      });
 
-        if (isMatch) {
-          if (existingTimer) {
-            window.clearTimeout(existingTimer);
-            hideTimers.delete(card);
-          }
+      const matchedSet = new Set(matchedCards);
+      const matchedPositions = new Map(matchedCards.map((card, index) => [card, index]));
+      const totalPages = Math.max(1, Math.ceil(matchedCards.length / PAGE_SIZE));
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
 
-          const existingEnterTimer = enterTimers.get(card);
-          if (existingEnterTimer) {
-            window.clearTimeout(existingEnterTimer);
-            enterTimers.delete(card);
-          }
+      const startIndex = (currentPage - 1) * PAGE_SIZE;
+      const endIndex = startIndex + PAGE_SIZE;
+      const visibleTarget = Math.max(0, Math.min(endIndex, matchedCards.length) - startIndex);
 
-          visibleCount += 1;
-
-          const wasHidden =
-            card.classList.contains("is-hidden") || card.classList.contains("is-leaving");
-
-          card.classList.remove("is-hidden", "is-leaving");
+      writeupCards.forEach((card) => {
+        const isMatch = matchedSet.has(card);
+        const position = matchedPositions.get(card);
+        const isWithinPage = isMatch && position >= startIndex && position < endIndex;
+        if (isWithinPage) {
+          card.classList.remove("is-hidden", "is-leaving", "is-entering");
           card.style.display = "block";
-
-          if (wasHidden) {
-            card.classList.remove("is-visible", "is-entering");
-            void card.offsetWidth;
-            card.classList.add("is-visible", "is-entering");
-            const enterTimer = window.setTimeout(() => {
-              card.classList.remove("is-entering");
-              enterTimers.delete(card);
-            }, 320);
-            enterTimers.set(card, enterTimer);
-          } else {
-            card.classList.add("is-visible");
-          }
-
+          card.classList.add("is-visible");
           return;
         }
 
         if (!card.classList.contains("is-hidden")) {
-          if (existingTimer) {
-            window.clearTimeout(existingTimer);
-          }
-          const existingEnterTimer = enterTimers.get(card);
-          if (existingEnterTimer) {
-            window.clearTimeout(existingEnterTimer);
-            enterTimers.delete(card);
-          }
-          card.classList.remove("is-entering");
-          card.classList.add("is-leaving");
-          const timer = window.setTimeout(() => {
-            card.classList.remove("is-visible", "is-leaving");
+          if (!hasInitialized) {
+            card.classList.remove("is-visible", "is-leaving", "is-entering");
             card.classList.add("is-hidden");
             card.style.display = "none";
-          }, 180);
-          hideTimers.set(card, timer);
+            return;
+          }
+
+          card.classList.remove("is-entering", "is-visible", "is-leaving");
+          card.classList.add("is-hidden");
+          card.style.display = "none";
         }
       });
 
       if (emptyState) {
-        emptyState.classList.toggle("active", visibleCount === 0);
+        emptyState.classList.toggle("active", matchedCards.length === 0);
       }
+
+      if (counterNode) {
+        const label = visibleTarget === 1 ? "machine" : "machines";
+        counterNode.textContent = `${visibleTarget} ${label}`;
+      }
+
+      if (pageInfo) {
+        pageInfo.textContent = matchedCards.length === 0
+          ? "Page 0 of 0"
+          : `Page ${currentPage} of ${totalPages}`;
+      }
+
+      if (prevButton) {
+        prevButton.disabled = currentPage <= 1 || matchedCards.length === 0;
+      }
+
+      if (nextButton) {
+        nextButton.disabled = currentPage >= totalPages || matchedCards.length === 0;
+      }
+
+      hasInitialized = true;
+      document.dispatchEvent(new Event("writeupCardsUpdated"));
     };
 
     const resetFilters = () => {
+      teamSelect.value = "all";
       difficultySelect.value = "all";
       osSelect.value = "all";
       techniqueSelect.value = "all";
+      currentPage = 1;
       applyFilters();
     };
 
-    difficultySelect.addEventListener("change", applyFilters);
-    osSelect.addEventListener("change", applyFilters);
-    techniqueSelect.addEventListener("change", applyFilters);
+    const onFilterChange = () => {
+      currentPage = 1;
+      applyFilters();
+    };
+
+    teamSelect.addEventListener("change", onFilterChange);
+    difficultySelect.addEventListener("change", onFilterChange);
+    osSelect.addEventListener("change", onFilterChange);
+    techniqueSelect.addEventListener("change", onFilterChange);
 
     if (resetButton) {
       resetButton.addEventListener("click", resetFilters);
+    }
+
+    if (prevButton) {
+      prevButton.addEventListener("click", () => {
+        if (currentPage > 1) {
+          currentPage -= 1;
+          applyFilters();
+        }
+      });
+    }
+
+    if (nextButton) {
+      nextButton.addEventListener("click", () => {
+        currentPage += 1;
+        applyFilters();
+      });
     }
 
     applyFilters();
   }
 
   function initPageTransitions() {
-    document.body.classList.add("page-transition-in");
-
-    const transitionLinks = Array.from(
-      document.querySelectorAll(".writeup-card, .back-link")
-    );
-    if (!transitionLinks.length) return;
-
-    transitionLinks.forEach((link) => {
-      link.addEventListener("click", (event) => {
-        const href = link.getAttribute("href");
-        if (!href || href.startsWith("#")) return;
-        if (link.getAttribute("target") === "_blank") return;
-
-        event.preventDefault();
-        document.body.classList.add("page-transition-out");
-        window.setTimeout(() => {
-          window.location.href = href;
-        }, 180);
-      });
-    });
+    return;
   }
 
   window.addEventListener("load", () => {
@@ -319,22 +439,18 @@
     initTyped();
     setCurrentYear();
     initWriteupTagLimit();
+    initWriteupDescriptionFit();
     initWriteupFilters();
     initPageTransitions();
 
     if (window.location.hash) {
       const hashSection = document.querySelector(window.location.hash);
       if (hashSection) {
-        navScrollLockUntil = Date.now() + 1800;
-        window.setTimeout(() => {
-          alignToSectionHash(window.location.hash);
-          setActiveNavLink(window.location.hash);
-          navScrollLockUntil = Date.now() + 1800;
-        }, 40);
-
-        window.setTimeout(() => {
-          alignToSectionHash(window.location.hash);
-        }, 420);
+        const hash = window.location.hash;
+        window.requestAnimationFrame(() => {
+          alignToSectionHash(hash, false);
+          setActiveNavLink(hash);
+        });
       } else {
         setActiveNavLink(window.location.hash);
       }
@@ -347,8 +463,7 @@
 
   window.addEventListener("hashchange", () => {
     if (window.location.hash) {
-      navScrollLockUntil = Date.now() + 1400;
-      alignToSectionHash(window.location.hash);
+      alignToSectionHash(window.location.hash, false);
       setActiveNavLink(window.location.hash);
     }
   });
