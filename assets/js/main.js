@@ -45,6 +45,19 @@
 
   function updateActiveNavOnScroll() {
     if (!sectionNodes.length) return;
+    const pageBottom = window.scrollY + window.innerHeight;
+    const docHeight = Math.max(
+      document.body.scrollHeight,
+      document.documentElement.scrollHeight
+    );
+
+    // Keep last section active when user is at the bottom of the page.
+    if (pageBottom >= docHeight - 4) {
+      const lastSectionId = sectionNodes[sectionNodes.length - 1].id;
+      setActiveNavLink(`#${lastSectionId}`);
+      return;
+    }
+
     const scrollPosition = window.scrollY + 120;
     let currentSectionId = sectionNodes[0].id;
 
