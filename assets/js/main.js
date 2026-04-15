@@ -157,6 +157,13 @@
     if (!writeupCards.length) return;
 
     let resizeTimer = null;
+    const getTagPriority = (label) => {
+      const text = (label || "").trim().toLowerCase();
+      if (text === "red team" || text === "blue team") return 0;
+      if (text === "easy" || text === "medium" || text === "hard") return 1;
+      if (text === "linux" || text === "windows") return 2;
+      return 3;
+    };
 
     const applyTagLimit = () => {
       writeupCards.forEach((card) => {
@@ -170,6 +177,20 @@
 
         const tags = Array.from(tagList.querySelectorAll(".tag:not(.tag-overflow)"));
         if (!tags.length) return;
+
+        tags
+          .map((tag, index) => ({
+            tag,
+            index,
+            priority: getTagPriority(tag.textContent),
+          }))
+          .sort((a, b) => {
+            if (a.priority !== b.priority) return a.priority - b.priority;
+            return a.index - b.index;
+          })
+          .forEach((item) => {
+            tagList.appendChild(item.tag);
+          });
 
         tags.forEach((tag) => {
           tag.classList.remove("tag-hidden");
@@ -239,21 +260,21 @@
 
         const descTop = description.getBoundingClientRect().top;
         const tagsTop = tagList.getBoundingClientRect().top;
-        const availableHeight = Math.max(Math.floor(tagsTop - descTop - 6), 24);
+        const availableHeight = Math.max(Math.floor(tagsTop - descTop), 24);
         description.style.maxHeight = `${availableHeight}px`;
 
-        if (description.scrollHeight <= description.clientHeight + 1) return;
+        if (description.scrollHeight <= description.clientHeight + 2) return;
 
         let low = 0;
         let high = fullText.length;
-        let best = "...";
+        let best = "…";
 
         while (low <= high) {
           const mid = Math.floor((low + high) / 2);
-          const candidate = `${fullText.slice(0, mid).trimEnd()}...`;
+          const candidate = `${fullText.slice(0, mid)}…`;
           description.textContent = candidate;
 
-          if (description.scrollHeight <= description.clientHeight + 1) {
+          if (description.scrollHeight <= description.clientHeight + 2) {
             best = candidate;
             low = mid + 1;
           } else {
@@ -286,12 +307,14 @@
     const osSelect = document.querySelector("#filter-os");
     const techniqueSelect = document.querySelector("#filter-technique");
     const resetButton = document.querySelector("#filter-reset");
+    const activeFiltersNode = document.querySelector("#writeups-active-filters");
     const emptyState = document.querySelector("#writeups-empty");
     const counterNode = document.querySelector("#writeups-counter");
     const prevButton = document.querySelector("#writeups-prev");
     const nextButton = document.querySelector("#writeups-next");
     const pageInfo = document.querySelector("#writeups-page-info");
     const PAGE_SIZE = 4;
+    const selectedTechniques = new Set();
     let currentPage = 1;
     let hasInitialized = false;
 
@@ -303,11 +326,53 @@
         .map((item) => item.trim().toLowerCase())
         .filter(Boolean);
 
+    const getOptionLabel = (selectNode, value) => {
+      const option = Array.from(selectNode.options || []).find((item) => item.value === value);
+      return option ? option.textContent.trim() : value;
+    };
+
+    const renderActiveFilterChips = () => {
+      if (!activeFiltersNode) return;
+
+      const chips = [];
+
+      if (teamSelect.value !== "all") {
+        chips.push({ type: "team", value: teamSelect.value, label: getOptionLabel(teamSelect, teamSelect.value) });
+      }
+      if (difficultySelect.value !== "all") {
+        chips.push({
+          type: "difficulty",
+          value: difficultySelect.value,
+          label: getOptionLabel(difficultySelect, difficultySelect.value),
+        });
+      }
+      if (osSelect.value !== "all") {
+        chips.push({ type: "os", value: osSelect.value, label: getOptionLabel(osSelect, osSelect.value) });
+      }
+
+      Array.from(selectedTechniques).forEach((technique) => {
+        chips.push({
+          type: "technique",
+          value: technique,
+          label: getOptionLabel(techniqueSelect, technique),
+        });
+      });
+
+      activeFiltersNode.innerHTML = chips
+        .map(
+          (chip) =>
+            `<span class="active-filter-chip" data-filter-type="${chip.type}" data-filter-value="${chip.value}">
+              ${chip.label}
+              <button class="active-filter-chip-remove" type="button" aria-label="Remove ${chip.label}">&times;</button>
+            </span>`
+        )
+        .join("");
+    };
+
     const applyFilters = () => {
       const team = teamSelect.value;
       const difficulty = difficultySelect.value;
       const os = osSelect.value;
-      const technique = techniqueSelect.value;
       const matchedCards = [];
 
       writeupCards.forEach((card) => {
@@ -319,7 +384,9 @@
         const matchesTeam = team === "all" || cardTeam === team;
         const matchesDifficulty = difficulty === "all" || cardDifficulty === difficulty;
         const matchesOs = os === "all" || cardOs === os;
-        const matchesTechnique = technique === "all" || cardTechniques.includes(technique);
+        const matchesTechnique =
+          selectedTechniques.size === 0 ||
+          Array.from(selectedTechniques).some((technique) => cardTechniques.includes(technique));
 
         const isMatch = matchesTeam && matchesDifficulty && matchesOs && matchesTechnique;
         if (isMatch) matchedCards.push(card);
@@ -339,26 +406,49 @@
         const isMatch = matchedSet.has(card);
         const position = matchedPositions.get(card);
         const isWithinPage = isMatch && position >= startIndex && position < endIndex;
-        if (isWithinPage) {
-          card.classList.remove("is-hidden", "is-leaving", "is-entering");
-          card.style.display = "block";
-          card.classList.add("is-visible");
-          return;
-        }
 
-        if (!card.classList.contains("is-hidden")) {
+        if (isWithinPage) {
           if (!hasInitialized) {
-            card.classList.remove("is-visible", "is-leaving", "is-entering");
-            card.classList.add("is-hidden");
-            card.style.display = "none";
+            card.classList.remove("is-hidden", "is-leaving", "is-entering");
+            card.style.display = "block";
+            card.classList.add("is-visible");
             return;
           }
 
-          card.classList.remove("is-entering", "is-visible", "is-leaving");
+          if (card.classList.contains("is-visible")) return;
+
+          card.style.display = "block";
+          card.classList.remove("is-hidden", "is-leaving", "is-visible", "is-filter-refresh");
+          card.classList.add("is-entering");
+
+          window.setTimeout(() => {
+            card.classList.remove("is-entering");
+            card.classList.add("is-visible");
+          }, 320);
+          return;
+        }
+
+        if (!hasInitialized) {
+          card.classList.remove("is-visible", "is-leaving", "is-entering", "is-filter-refresh");
           card.classList.add("is-hidden");
           card.style.display = "none";
+          return;
         }
+
+        card.classList.remove("is-visible", "is-entering", "is-leaving", "is-filter-refresh");
+        card.classList.add("is-hidden");
+        card.style.display = "none";
       });
+
+      if (hasInitialized) {
+        const visibleCards = matchedCards.slice(startIndex, endIndex);
+        visibleCards.forEach((card) => {
+          if (!card.classList.contains("is-visible")) return;
+          card.classList.remove("is-filter-refresh");
+          void card.offsetWidth;
+          card.classList.add("is-filter-refresh");
+        });
+      }
 
       if (emptyState) {
         emptyState.classList.toggle("active", matchedCards.length === 0);
@@ -383,6 +473,7 @@
         nextButton.disabled = currentPage >= totalPages || matchedCards.length === 0;
       }
 
+      renderActiveFilterChips();
       hasInitialized = true;
       document.dispatchEvent(new Event("writeupCardsUpdated"));
     };
@@ -392,6 +483,7 @@
       difficultySelect.value = "all";
       osSelect.value = "all";
       techniqueSelect.value = "all";
+      selectedTechniques.clear();
       currentPage = 1;
       applyFilters();
     };
@@ -404,7 +496,34 @@
     teamSelect.addEventListener("change", onFilterChange);
     difficultySelect.addEventListener("change", onFilterChange);
     osSelect.addEventListener("change", onFilterChange);
-    techniqueSelect.addEventListener("change", onFilterChange);
+    techniqueSelect.addEventListener("change", () => {
+      const value = (techniqueSelect.value || "").toLowerCase();
+      if (value && value !== "all") {
+        selectedTechniques.add(value);
+      }
+      techniqueSelect.value = "all";
+      onFilterChange();
+    });
+
+    if (activeFiltersNode) {
+      activeFiltersNode.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || !target.classList.contains("active-filter-chip-remove")) return;
+
+        const chip = target.closest(".active-filter-chip");
+        if (!chip) return;
+
+        const filterType = chip.getAttribute("data-filter-type");
+        const filterValue = chip.getAttribute("data-filter-value");
+
+        if (filterType === "team") teamSelect.value = "all";
+        if (filterType === "difficulty") difficultySelect.value = "all";
+        if (filterType === "os") osSelect.value = "all";
+        if (filterType === "technique" && filterValue) selectedTechniques.delete(filterValue);
+
+        onFilterChange();
+      });
+    }
 
     if (resetButton) {
       resetButton.addEventListener("click", resetFilters);
