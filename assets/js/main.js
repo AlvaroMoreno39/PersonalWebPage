@@ -119,13 +119,33 @@
   }
 
   function initAos() {
-    if (typeof AOS === "undefined") return;
+    const revealAosNodes = () => {
+      document.querySelectorAll("[data-aos]").forEach((node) => {
+        node.classList.add("aos-animate");
+      });
+    };
+
+    if (typeof AOS === "undefined") {
+      revealAosNodes();
+      return;
+    }
+
     AOS.init({
       duration: 650,
       easing: "ease-out-cubic",
       once: true,
       mirror: false,
     });
+
+    // Fallback: if AOS fails to animate some nodes, keep content visible.
+    window.setTimeout(() => {
+      document.querySelectorAll("[data-aos]").forEach((node) => {
+        const styles = window.getComputedStyle(node);
+        if (!node.classList.contains("aos-animate") && styles.opacity === "0") {
+          node.classList.add("aos-animate");
+        }
+      });
+    }, 900);
   }
 
   function initTyped() {
@@ -315,6 +335,7 @@
     const pageInfo = document.querySelector("#writeups-page-info");
     const PAGE_SIZE = 4;
     const selectedTechniques = new Set();
+    const cardShowTimers = new WeakMap();
     let currentPage = 1;
     let hasInitialized = false;
 
@@ -403,6 +424,12 @@
       const visibleTarget = Math.max(0, Math.min(endIndex, matchedCards.length) - startIndex);
 
       writeupCards.forEach((card) => {
+        const showTimer = cardShowTimers.get(card);
+        if (showTimer) {
+          window.clearTimeout(showTimer);
+          cardShowTimers.delete(card);
+        }
+
         const isMatch = matchedSet.has(card);
         const position = matchedPositions.get(card);
         const isWithinPage = isMatch && position >= startIndex && position < endIndex;
@@ -415,16 +442,18 @@
             return;
           }
 
-          if (card.classList.contains("is-visible")) return;
+          if (card.classList.contains("is-visible") && card.style.display !== "none") return;
 
           card.style.display = "block";
           card.classList.remove("is-hidden", "is-leaving", "is-visible", "is-filter-refresh");
           card.classList.add("is-entering");
 
-          window.setTimeout(() => {
+          const timer = window.setTimeout(() => {
             card.classList.remove("is-entering");
             card.classList.add("is-visible");
+            cardShowTimers.delete(card);
           }, 320);
+          cardShowTimers.set(card, timer);
           return;
         }
 
