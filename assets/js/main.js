@@ -5,10 +5,94 @@
   const headerToggleBtn = document.querySelector(".header-toggle");
   const navmenuLinks = Array.from(document.querySelectorAll("#navmenu a"));
   const sectionNodes = Array.from(document.querySelectorAll("main section[id]"));
-  let navRequestToken = 0;
+  const isIndexPage = document.body.classList.contains("index-page");
+  const reduceMotionQuery =
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+  let smoothScrollFrame = 0;
+  let smoothScrollToken = 0;
+  let smoothScrollCancelCallback = null;
 
   if ("scrollRestoration" in history) {
     history.scrollRestoration = "manual";
+  }
+
+  function stopSmoothScroll() {
+    if (smoothScrollFrame) {
+      window.cancelAnimationFrame(smoothScrollFrame);
+      smoothScrollFrame = 0;
+    }
+    if (typeof smoothScrollCancelCallback === "function") {
+      const cancelCb = smoothScrollCancelCallback;
+      smoothScrollCancelCallback = null;
+      cancelCb();
+    }
+    smoothScrollToken += 1;
+  }
+
+  const easeOutCubic = (value) => 1 - Math.pow(1 - value, 3);
+
+  function smoothScrollTo(targetTop, options = {}) {
+    const { duration = 340, onUpdate = null, onComplete = null, onCancel = null } = options;
+    const docHeight = Math.max(
+      document.body.scrollHeight,
+      document.documentElement.scrollHeight
+    );
+    const maxTop = Math.max(docHeight - window.innerHeight, 0);
+    const startTop = window.scrollY;
+    const clampedTarget = Math.min(Math.max(targetTop, 0), maxTop);
+    const distance = clampedTarget - startTop;
+
+    if (Math.abs(distance) < 1) {
+      stopSmoothScroll();
+      window.scrollTo({ top: clampedTarget, left: 0, behavior: "auto" });
+      if (typeof onUpdate === "function") onUpdate(clampedTarget, 1);
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
+
+    if (reduceMotionQuery && reduceMotionQuery.matches) {
+      stopSmoothScroll();
+      window.scrollTo({ top: clampedTarget, left: 0, behavior: "auto" });
+      if (typeof onUpdate === "function") onUpdate(clampedTarget, 1);
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
+
+    stopSmoothScroll();
+    const token = smoothScrollToken;
+    smoothScrollCancelCallback = () => {
+      if (typeof onCancel === "function") onCancel();
+    };
+    const startTime = performance.now();
+    const requestedDuration = Number(duration);
+    const baseDuration = Number.isFinite(requestedDuration) ? requestedDuration : 340;
+    const distanceBoost = Math.min(Math.abs(distance) * 0.03, 90);
+    const finalDuration = Math.round(
+      Math.max(150, Math.min(baseDuration + distanceBoost, 360))
+    );
+
+    const step = (now) => {
+      if (token !== smoothScrollToken) return;
+      const progress = Math.min((now - startTime) / finalDuration, 1);
+      const eased = easeOutCubic(progress);
+      const nextTop = startTop + distance * eased;
+      window.scrollTo({ top: nextTop, left: 0, behavior: "auto" });
+      if (typeof onUpdate === "function") onUpdate(nextTop, progress);
+
+      if (progress < 1) {
+        smoothScrollFrame = window.requestAnimationFrame(step);
+      } else {
+        smoothScrollFrame = 0;
+        smoothScrollCancelCallback = null;
+        window.scrollTo({ top: clampedTarget, left: 0, behavior: "auto" });
+        if (typeof onUpdate === "function") onUpdate(clampedTarget, 1);
+        if (typeof onComplete === "function") onComplete();
+      }
+    };
+
+    smoothScrollFrame = window.requestAnimationFrame(step);
   }
 
   function alignToSectionHash(hash, smooth = false) {
@@ -17,8 +101,26 @@
     if (!target) return;
 
     const targetTop = Math.max(target.offsetTop, 0);
-    window.scrollTo({ top: targetTop, behavior: smooth ? "smooth" : "auto" });
+    if (smooth) {
+      smoothScrollTo(targetTop, {
+        duration: 320,
+        onComplete: () => {
+          if (isIndexPage) setActiveNavLink(hash);
+        },
+      });
+      return;
+    }
+
+    stopSmoothScroll();
+    window.scrollTo({ top: targetTop, left: 0, behavior: "auto" });
   }
+
+  const interruptSmoothScroll = () => {
+    stopSmoothScroll();
+  };
+
+  window.addEventListener("wheel", interruptSmoothScroll, { passive: true });
+  window.addEventListener("touchstart", interruptSmoothScroll, { passive: true });
 
   function headerToggle() {
     if (!header || !headerToggleBtn) return;
@@ -95,12 +197,12 @@
         const section = document.querySelector(href);
         if (section) {
           event.preventDefault();
-          const token = ++navRequestToken;
           setActiveNavLink(href);
-          alignToSectionHash(href, false);
-          window.requestAnimationFrame(() => {
-            if (token !== navRequestToken) return;
-            alignToSectionHash(href, false);
+          smoothScrollTo(Math.max(section.offsetTop, 0), {
+            duration: 340,
+            onComplete: () => {
+              setActiveNavLink(href);
+            },
           });
 
           if (window.history && window.history.replaceState) {
@@ -127,7 +229,9 @@
   if (scrollTop) {
     scrollTop.addEventListener("click", (event) => {
       event.preventDefault();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      smoothScrollTo(0, {
+        duration: 280,
+      });
     });
   }
 
@@ -339,6 +443,7 @@
     const difficultySelect = document.querySelector("#filter-difficulty");
     const osSelect = document.querySelector("#filter-os");
     const techniqueSelect = document.querySelector("#filter-technique");
+    const searchInput = document.querySelector("#filter-search");
     const resetButton = document.querySelector("#filter-reset");
     const activeFiltersNode = document.querySelector("#writeups-active-filters");
     const emptyState = document.querySelector("#writeups-empty");
@@ -352,7 +457,7 @@
     let currentPage = 1;
     let hasInitialized = false;
 
-    if (!writeupCards.length || !teamSelect || !difficultySelect || !osSelect || !techniqueSelect) return;
+    if (!writeupCards.length || !teamSelect || !difficultySelect || !osSelect || !techniqueSelect || !searchInput) return;
 
     const normalizeList = (value) =>
       value
@@ -407,6 +512,7 @@
       const team = teamSelect.value;
       const difficulty = difficultySelect.value;
       const os = osSelect.value;
+      const searchTerm = searchInput.value.trim().toLowerCase();
       const matchedCards = [];
 
       writeupCards.forEach((card) => {
@@ -414,6 +520,7 @@
         const cardDifficulty = (card.dataset.difficulty || "").toLowerCase();
         const cardOs = (card.dataset.os || "").toLowerCase();
         const cardTechniques = normalizeList(card.dataset.techniques || "");
+        const cardText = (card.textContent || "").toLowerCase();
 
         const matchesTeam = team === "all" || cardTeam === team;
         const matchesDifficulty = difficulty === "all" || cardDifficulty === difficulty;
@@ -421,8 +528,9 @@
         const matchesTechnique =
           selectedTechniques.size === 0 ||
           Array.from(selectedTechniques).some((technique) => cardTechniques.includes(technique));
+        const matchesSearch = !searchTerm || cardText.includes(searchTerm);
 
-        const isMatch = matchesTeam && matchesDifficulty && matchesOs && matchesTechnique;
+        const isMatch = matchesTeam && matchesDifficulty && matchesOs && matchesTechnique && matchesSearch;
         if (isMatch) matchedCards.push(card);
       });
 
@@ -482,16 +590,6 @@
         card.style.display = "none";
       });
 
-      if (hasInitialized) {
-        const visibleCards = matchedCards.slice(startIndex, endIndex);
-        visibleCards.forEach((card) => {
-          if (!card.classList.contains("is-visible")) return;
-          card.classList.remove("is-filter-refresh");
-          void card.offsetWidth;
-          card.classList.add("is-filter-refresh");
-        });
-      }
-
       if (emptyState) {
         emptyState.classList.toggle("active", matchedCards.length === 0);
       }
@@ -525,6 +623,7 @@
       difficultySelect.value = "all";
       osSelect.value = "all";
       techniqueSelect.value = "all";
+      searchInput.value = "";
       selectedTechniques.clear();
       currentPage = 1;
       applyFilters();
@@ -546,6 +645,7 @@
       techniqueSelect.value = "all";
       onFilterChange();
     });
+    searchInput.addEventListener("input", onFilterChange);
 
     if (activeFiltersNode) {
       activeFiltersNode.addEventListener("click", (event) => {
@@ -562,7 +662,6 @@
         if (filterType === "difficulty") difficultySelect.value = "all";
         if (filterType === "os") osSelect.value = "all";
         if (filterType === "technique" && filterValue) selectedTechniques.delete(filterValue);
-
         onFilterChange();
       });
     }
@@ -590,9 +689,285 @@
     applyFilters();
   }
 
+  function initSectionReveal() {
+    if (!document.body.classList.contains("index-page")) return;
+
+    const sections = Array.from(document.querySelectorAll("main section.section"));
+    if (!sections.length) return;
+
+    sections.forEach((section) => {
+      section.classList.add("section-reveal-init");
+    });
+
+    if (typeof IntersectionObserver === "undefined") {
+      sections.forEach((section) => section.classList.add("section-reveal-visible"));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("section-reveal-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      {
+        root: null,
+        threshold: 0.16,
+        rootMargin: "0px 0px -6% 0px",
+      }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+  }
+
+  function initWriteupEnhancements() {
+    const detailBox = document.querySelector(".writeup-detail .detail-box");
+    if (!detailBox) return;
+    if (window.__writeupEnhancementsInitialized) return;
+    window.__writeupEnhancementsInitialized = true;
+
+    // Defensive cleanup in case this initializer runs more than once.
+    document.querySelectorAll(".writeup-toc").forEach((node) => node.remove());
+    detailBox.querySelectorAll(".writeup-bottom-spacer").forEach((node) => node.remove());
+
+    const slugify = (value) =>
+      (value || "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
+
+    // Build table of contents from writeup section titles.
+    const headings = Array.from(detailBox.querySelectorAll("h2"));
+    if (headings.length) {
+      const toc = document.createElement("nav");
+      toc.className = "writeup-toc";
+      toc.setAttribute("aria-label", "Writeup index");
+
+      const tocTitle = document.createElement("h3");
+      tocTitle.textContent = "Index";
+      toc.appendChild(tocTitle);
+
+      const tocList = document.createElement("ul");
+
+      headings.forEach((heading, index) => {
+        if (!heading.id) {
+          const base = slugify(heading.textContent) || `section-${index + 1}`;
+          let candidate = `toc-${base}`;
+          let suffix = 1;
+          while (document.getElementById(candidate)) {
+            candidate = `toc-${base}-${suffix}`;
+            suffix += 1;
+          }
+          heading.id = candidate;
+        }
+
+        const li = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = `#${heading.id}`;
+        link.textContent = heading.textContent.trim();
+        li.appendChild(link);
+        tocList.appendChild(li);
+      });
+
+      toc.appendChild(tocList);
+      document.body.appendChild(toc);
+
+      const tocLinks = Array.from(toc.querySelectorAll("a"));
+      let tocScrollTicking = false;
+      let tocIsNavigating = false;
+      let tocTargetId = "";
+      const topOffset = 96;
+      const alignOffset = topOffset - 8;
+      const bottomSpacer = document.createElement("div");
+      bottomSpacer.className = "writeup-bottom-spacer";
+      detailBox.appendChild(bottomSpacer);
+      let headingPositions = [];
+
+      const getHeadingTop = (heading) =>
+        Math.max(heading.getBoundingClientRect().top + window.scrollY, 0);
+
+      const refreshHeadingPositions = () => {
+        headingPositions = headings.map((heading) => getHeadingTop(heading));
+      };
+
+      const setBottomSpacerHeight = () => {
+        bottomSpacer.style.height = "0px";
+
+        const lastHeading = headings[headings.length - 1];
+        if (!lastHeading) return;
+
+        const distanceFromLastHeadingToEnd = detailBox.scrollHeight - lastHeading.offsetTop;
+        const neededSpace = window.innerHeight - alignOffset - distanceFromLastHeadingToEnd + 32;
+        const safeSpace = Math.max(Math.ceil(neededSpace), 0);
+        bottomSpacer.style.height = `${safeSpace}px`;
+        refreshHeadingPositions();
+      };
+
+      const setActiveTocById = (id) => {
+        tocLinks.forEach((link) => {
+          const hash = (link.getAttribute("href") || "").replace("#", "");
+          link.classList.toggle("active", hash === id);
+        });
+      };
+
+      const syncActiveToc = () => {
+        if (tocIsNavigating && tocTargetId) {
+          setActiveTocById(tocTargetId);
+          return;
+        }
+        if (!headingPositions.length) refreshHeadingPositions();
+
+        const pageBottom = window.scrollY + window.innerHeight;
+        const docHeight = Math.max(
+          document.body.scrollHeight,
+          document.documentElement.scrollHeight
+        );
+
+        if (pageBottom >= docHeight - 2) {
+          setActiveTocById(headings[headings.length - 1].id);
+          return;
+        }
+
+        const marker = window.scrollY + topOffset;
+        let activeIndex = 0;
+
+        for (let i = headingPositions.length - 1; i >= 0; i -= 1) {
+          if (marker >= headingPositions[i] - 1) {
+            activeIndex = i;
+            break;
+          }
+        }
+
+        setActiveTocById(headings[Math.min(activeIndex, headings.length - 1)].id);
+      };
+
+      tocLinks.forEach((link) => {
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          const hash = (link.getAttribute("href") || "").replace("#", "");
+          const target = hash ? document.getElementById(hash) : null;
+          if (!target) return;
+
+          refreshHeadingPositions();
+          const targetTop = Math.max(getHeadingTop(target) - alignOffset, 0);
+          tocIsNavigating = true;
+          tocTargetId = hash;
+          setActiveTocById(hash);
+          smoothScrollTo(targetTop, {
+            duration: 300,
+            onUpdate: () => {
+              setActiveTocById(hash);
+            },
+            onComplete: () => {
+              tocIsNavigating = false;
+              tocTargetId = "";
+              refreshHeadingPositions();
+              syncActiveToc();
+            },
+            onCancel: () => {
+              tocIsNavigating = false;
+              tocTargetId = "";
+              syncActiveToc();
+            },
+          });
+
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, "", `#${hash}`);
+          }
+        });
+      });
+
+      setBottomSpacerHeight();
+      syncActiveToc();
+
+      window.addEventListener(
+        "resize",
+        () => {
+          setBottomSpacerHeight();
+          syncActiveToc();
+        },
+        { passive: true }
+      );
+
+      window.setTimeout(() => {
+        setBottomSpacerHeight();
+        syncActiveToc();
+      }, 180);
+
+      const detailImages = Array.from(detailBox.querySelectorAll("img"));
+      detailImages.forEach((img) => {
+        if (img.complete) return;
+        img.addEventListener(
+          "load",
+          () => {
+            setBottomSpacerHeight();
+            syncActiveToc();
+          },
+          { once: true }
+        );
+        img.addEventListener(
+          "error",
+          () => {
+            setBottomSpacerHeight();
+            syncActiveToc();
+          },
+          { once: true }
+        );
+      });
+
+      window.addEventListener("scroll", () => {
+        if (tocScrollTicking) return;
+        tocScrollTicking = true;
+        window.requestAnimationFrame(() => {
+          syncActiveToc();
+          tocScrollTicking = false;
+        });
+      }, { passive: true });
+    }
+
+    // Add copy button to each code block.
+    const codeBlocks = Array.from(detailBox.querySelectorAll("pre"));
+    codeBlocks.forEach((pre) => {
+      const code = pre.querySelector("code");
+      if (!code) return;
+
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "copy-code-btn";
+      copyBtn.textContent = "Copy";
+      copyBtn.setAttribute("aria-label", "Copy command");
+
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(code.innerText);
+          const previous = copyBtn.textContent;
+          copyBtn.textContent = "Copied";
+          window.setTimeout(() => {
+            copyBtn.textContent = previous;
+          }, 1200);
+        } catch (_) {
+          copyBtn.textContent = "Failed";
+          window.setTimeout(() => {
+            copyBtn.textContent = "Copy";
+          }, 1200);
+        }
+      });
+
+      pre.appendChild(copyBtn);
+    });
+  }
+
   function initPageTransitions() {
     return;
   }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    initSectionReveal();
+  });
 
   window.addEventListener("load", () => {
     toggleScrollTop();
@@ -602,27 +977,31 @@
     initWriteupTagLimit();
     initWriteupDescriptionFit();
     initWriteupFilters();
+    initWriteupEnhancements();
     initPageTransitions();
 
-    if (window.location.hash) {
-      const hashSection = document.querySelector(window.location.hash);
-      if (hashSection) {
-        const hash = window.location.hash;
-        window.requestAnimationFrame(() => {
-          alignToSectionHash(hash, false);
-          setActiveNavLink(hash);
-        });
+    if (isIndexPage) {
+      if (window.location.hash) {
+        const hashSection = document.querySelector(window.location.hash);
+        if (hashSection) {
+          const hash = window.location.hash;
+          window.requestAnimationFrame(() => {
+            alignToSectionHash(hash, false);
+            setActiveNavLink(hash);
+          });
+        } else {
+          setActiveNavLink(window.location.hash);
+        }
       } else {
-        setActiveNavLink(window.location.hash);
+        updateActiveNavOnScroll();
       }
-    } else {
-      updateActiveNavOnScroll();
     }
   });
 
   document.addEventListener("scroll", onScroll, { passive: true });
 
   window.addEventListener("hashchange", () => {
+    if (!isIndexPage) return;
     if (window.location.hash) {
       alignToSectionHash(window.location.hash, false);
       setActiveNavLink(window.location.hash);

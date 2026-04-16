@@ -322,6 +322,10 @@
       </div>
 
       <div class="container" data-aos="fade-up" data-aos-delay="100">
+        <div class="writeups-search">
+          <label for="filter-search">Search</label>
+          <input id="filter-search" type="text" placeholder="Search by machine name, keyword, or tag...">
+        </div>
         <div class="writeups-filters" aria-label="Writeup filters">
           <div class="filter-group">
             <label for="filter-team">Team</label>
@@ -436,6 +440,29 @@
                 <span class="tag">SQLite</span>
                 <span class="tag">Password Cracking</span>
                 <span class="tag">Sudo Abuse</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/cicada-htb-easy.html" data-team="red" data-difficulty="easy" data-os="windows"
+            data-techniques="enumeration,active-directory,credential-harvesting,lateral-movement,privilege-escalation,backup-abuse">
+            <div class="writeup-card-body">
+              <h3>Cicada - HTB</h3>
+              <p>Cicada is a clean AD attack chain: anonymous SMB access leaks a default password, RID brute-forcing and spraying lead to valid users, and credential hunting across LDAP descriptions and DEV scripts ends in WinRM access. Backup Operators privileges are then abused with VSS to extract NTDS.dit and SYSTEM, enabling Pass-the-Hash as Administrator.</p>
+              <div class="tag-list">
+                <span class="tag">Red Team</span>
+                <span class="tag">Easy</span>
+                <span class="tag">Windows</span>
+                <span class="tag">Active Directory</span>
+                <span class="tag">SMB</span>
+                <span class="tag">LDAP</span>
+                <span class="tag">Credential Hunting</span>
+                <span class="tag">WinRM</span>
+                <span class="tag">SeBackupPrivilege</span>
+                <span class="tag">VSS</span>
+                <span class="tag">NTDS Dump</span>
+                <span class="tag">Pass-the-Hash</span>
+                <span class="tag">Domain Compromise</span>
               </div>
             </div>
           </a>
