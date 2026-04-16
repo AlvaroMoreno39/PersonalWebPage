@@ -448,12 +448,16 @@
     const activeFiltersNode = document.querySelector("#writeups-active-filters");
     const emptyState = document.querySelector("#writeups-empty");
     const counterNode = document.querySelector("#writeups-counter");
+    const writeupsGrid = document.querySelector(".writeups-grid");
     const prevButton = document.querySelector("#writeups-prev");
     const nextButton = document.querySelector("#writeups-next");
     const pageInfo = document.querySelector("#writeups-page-info");
     const PAGE_SIZE = 4;
     const selectedTechniques = new Set();
     const cardShowTimers = new WeakMap();
+    let gridResizeTimer = null;
+    let lastMatchedCount = 0;
+    let lastMeasuredCardHeight = 300;
     let currentPage = 1;
     let hasInitialized = false;
 
@@ -508,7 +512,58 @@
         .join("");
     };
 
-    const applyFilters = () => {
+    const getScrollY = () => window.scrollY || window.pageYOffset || 0;
+
+    const restoreScrollY = (preserveScrollY) => {
+      if (!Number.isFinite(preserveScrollY)) return;
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const docHeight = Math.max(
+            document.body.scrollHeight,
+            document.documentElement.scrollHeight
+          );
+          const maxTop = Math.max(docHeight - window.innerHeight, 0);
+          const clampedTop = Math.min(Math.max(preserveScrollY, 0), maxTop);
+          window.scrollTo({ top: clampedTop, left: 0, behavior: "auto" });
+        });
+      });
+    };
+
+    const updateWriteupsGridMinHeight = () => {
+      if (!writeupsGrid) return;
+
+      if (lastMatchedCount <= 0) {
+        writeupsGrid.style.minHeight = "0px";
+        return;
+      }
+
+      const gridStyle = window.getComputedStyle(writeupsGrid);
+      const template = (gridStyle.gridTemplateColumns || "").trim();
+      const columns = Math.max(1, template ? template.split(/\s+/).length : 1);
+      const rows = Math.max(1, Math.ceil(PAGE_SIZE / columns));
+
+      const visibleCard = writeupCards.find(
+        (card) => card.style.display !== "none" && !card.classList.contains("is-hidden")
+      );
+      const measuredHeight = visibleCard
+        ? visibleCard.getBoundingClientRect().height
+        : parseFloat(window.getComputedStyle(writeupCards[0]).height || "0");
+
+      if (Number.isFinite(measuredHeight) && measuredHeight > 0) {
+        lastMeasuredCardHeight = measuredHeight;
+      }
+
+      const cardHeight = Math.max(lastMeasuredCardHeight, 1);
+      const rowGap = parseFloat(gridStyle.rowGap || gridStyle.gap || "0") || 0;
+      const minHeight = Math.round(rows * cardHeight + Math.max(0, rows - 1) * rowGap);
+
+      writeupsGrid.style.minHeight = `${minHeight}px`;
+    };
+
+    const applyFilters = (options = {}) => {
+      const preserveScrollY = Number.isFinite(options.preserveScrollY)
+        ? options.preserveScrollY
+        : null;
       const team = teamSelect.value;
       const difficulty = difficultySelect.value;
       const os = osSelect.value;
@@ -613,12 +668,16 @@
         nextButton.disabled = currentPage >= totalPages || matchedCards.length === 0;
       }
 
+      lastMatchedCount = matchedCards.length;
+      updateWriteupsGridMinHeight();
       renderActiveFilterChips();
       hasInitialized = true;
       document.dispatchEvent(new Event("writeupCardsUpdated"));
+      restoreScrollY(preserveScrollY);
     };
 
     const resetFilters = () => {
+      const preserveScrollY = getScrollY();
       teamSelect.value = "all";
       difficultySelect.value = "all";
       osSelect.value = "all";
@@ -626,12 +685,13 @@
       searchInput.value = "";
       selectedTechniques.clear();
       currentPage = 1;
-      applyFilters();
+      applyFilters({ preserveScrollY });
     };
 
     const onFilterChange = () => {
+      const preserveScrollY = getScrollY();
       currentPage = 1;
-      applyFilters();
+      applyFilters({ preserveScrollY });
     };
 
     teamSelect.addEventListener("change", onFilterChange);
@@ -671,20 +731,37 @@
     }
 
     if (prevButton) {
-      prevButton.addEventListener("click", () => {
+      prevButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        const preserveScrollY = getScrollY();
+        if (event.currentTarget instanceof HTMLElement) {
+          event.currentTarget.blur();
+        }
         if (currentPage > 1) {
           currentPage -= 1;
-          applyFilters();
+          applyFilters({ preserveScrollY });
         }
       });
     }
 
     if (nextButton) {
-      nextButton.addEventListener("click", () => {
+      nextButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        const preserveScrollY = getScrollY();
+        if (event.currentTarget instanceof HTMLElement) {
+          event.currentTarget.blur();
+        }
         currentPage += 1;
-        applyFilters();
+        applyFilters({ preserveScrollY });
       });
     }
+
+    window.addEventListener("resize", () => {
+      if (gridResizeTimer) window.clearTimeout(gridResizeTimer);
+      gridResizeTimer = window.setTimeout(() => {
+        updateWriteupsGridMinHeight();
+      }, 120);
+    });
 
     applyFilters();
   }

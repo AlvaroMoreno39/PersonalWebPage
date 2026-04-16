@@ -97,6 +97,7 @@ section,
 
 #writeups {
   background: #e1e9f4;
+  overflow-anchor: none;
 }
 
 #certifications {
@@ -478,12 +479,27 @@ section,
   color: #0f766e;
   font-weight: 600;
   padding: 8px 15px;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.writeups-page-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.writeups-page-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.2);
 }
 
 .writeups-page-btn:hover:not(:disabled) {
   background: rgba(15, 118, 110, 0.08);
   transform: translateY(-2px);
+}
+
+.writeups-page-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .writeups-page-btn:disabled {
@@ -1167,6 +1183,26 @@ section,
     width: 100%;
   }
 
+  .writeups-actions {
+    margin-top: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: stretch;
+  }
+
+  .writeups-page-info {
+    order: -1;
+    width: 100%;
+    min-width: 0;
+    font-size: 0.88rem;
+  }
+
+  .writeups-page-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
   .scroll-top {
     width: 46px;
     height: 46px;
@@ -1174,5 +1210,20 @@ section,
 
   .scroll-top i {
     font-size: 1.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .writeup-card {
+    height: 292px;
+    padding: 1.05rem 1.05rem;
+  }
+
+  .writeup-card h3 {
+    font-size: 1.02rem;
+  }
+
+  .writeup-card p {
+    line-height: 1.42;
   }
 }
