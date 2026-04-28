@@ -930,6 +930,28 @@ section,
   font-size: 0.92rem;
 }
 
+.certification-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 5px;
+}
+
+.certification-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #5b677b;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.certification-meta-item i {
+  color: #0f766e;
+  font-size: 0.95rem;
+}
+
 .certification-tags {
   display: flex;
   flex-wrap: wrap;
