@@ -1025,6 +1025,32 @@ section,
   margin: 0;
 }
 
+.cv-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 0;
+}
+
+.cv-downloads a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  background: transparent;
+  color: #0f766e;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.cv-downloads a:hover {
+  color: #0b5e58;
+  text-decoration: none;
+}
+
 .footer {
   color: var(--default-color);
   background: linear-gradient(180deg, #f2f7fd 0%, #ebf2fb 100%);
