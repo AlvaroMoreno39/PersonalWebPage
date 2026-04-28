@@ -98,6 +98,7 @@ section,
 #writeups {
   background: #e1e9f4;
   overflow-anchor: none;
+  padding-bottom: 34px;
 }
 
 #certifications {
@@ -289,9 +290,37 @@ section,
   color: #e5e7eb;
 }
 
+.hero .typed {
+  display: inline-block;
+  min-height: 1.25em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .hero .typed,
 .hero .typed-cursor {
   color: #8be9df;
+}
+
+.hero .typed-cursor {
+  display: inline-block;
+  margin-left: 1px;
+  font-weight: 500;
+  transform: scaleY(1.08);
+  transform-origin: center;
+  animation: typedCursorBlink 0.85s steps(1) infinite;
+}
+
+@keyframes typedCursorBlink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  46%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .resume .resume-title {
@@ -465,7 +494,7 @@ section,
 }
 
 .writeups-actions {
-  margin-top: 16px;
+  margin: 14px 0 18px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -522,9 +551,17 @@ section,
   align-items: stretch;
 }
 
+.writeups-grid.has-empty-state {
+  min-height: 300px;
+}
+
 @media (max-width: 1400px) {
   .writeups-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .writeups-grid.has-empty-state {
+    min-height: 618px;
   }
 }
 
@@ -532,11 +569,19 @@ section,
   .writeups-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .writeups-grid.has-empty-state {
+    min-height: 618px;
+  }
 }
 
 @media (max-width: 576px) {
   .writeups-grid {
     grid-template-columns: 1fr;
+  }
+
+  .writeups-grid.has-empty-state {
+    min-height: 1222px;
   }
 }
 
@@ -714,23 +759,89 @@ section,
 }
 
 .writeups-empty {
-  margin-top: 16px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px dashed rgba(15, 118, 110, 0.35);
+  grid-column: 1 / -1;
+  min-height: 100%;
+  border-radius: var(--radius-lg);
+  border: 1px dashed rgba(15, 118, 110, 0.28);
   color: #48617f;
-  background: rgba(255, 255, 255, 0.72);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(20, 184, 166, 0.14), transparent 38%),
+    rgba(255, 255, 255, 0.74);
   display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  text-align: center;
   opacity: 0;
+  pointer-events: none;
   transform: translateY(8px);
   transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .writeups-empty.active {
-  display: block;
+  display: flex;
+  height: 100%;
   opacity: 1;
   transform: translateY(0);
   animation: emptyStateIn 0.28s ease;
+}
+
+.writeups-grid.has-empty-state .writeups-empty {
+  min-height: inherit;
+}
+
+.writeups-empty-visual {
+  width: 82px;
+  height: 82px;
+  border-radius: 26px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, rgba(15, 118, 110, 0.16), rgba(59, 130, 246, 0.1));
+  border: 1px solid rgba(15, 118, 110, 0.18);
+}
+
+.writeups-empty-visual span {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 2px solid rgba(15, 118, 110, 0.55);
+  position: relative;
+}
+
+.writeups-empty-visual span::before,
+.writeups-empty-visual span::after {
+  content: "";
+  position: absolute;
+  background: rgba(15, 118, 110, 0.55);
+  border-radius: 999px;
+}
+
+.writeups-empty-visual span::before {
+  width: 18px;
+  height: 2px;
+  left: 10px;
+  top: 13px;
+}
+
+.writeups-empty-visual span::after {
+  width: 24px;
+  height: 2px;
+  left: 7px;
+  top: 23px;
+}
+
+.writeups-empty-copy strong {
+  display: block;
+  color: #1e3a55;
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.writeups-empty-copy p {
+  margin: 0;
+  color: #5d708a;
 }
 
 .certifications-list {
@@ -739,11 +850,78 @@ section,
 }
 
 .certification-item {
-  padding: 1.2rem 1.3rem;
+  padding: 1.25rem 1.35rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 20px;
+}
+
+.certification-item > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.certification-item h3 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.certification-item p:not(.certification-meta) {
+  margin: 8px 0 0;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.certification-summary {
+  max-width: 720px;
+}
+
+.certification-breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.certification-breakdown div {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 12px 13px;
+}
+
+.certification-breakdown h4 {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  color: #0f766e;
+}
+
+.certification-breakdown ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #475569;
+}
+
+.certification-breakdown li + li {
+  margin-top: 5px;
+}
+
+.certification-skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.certification-skill-tags span {
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(15, 118, 110, 0.09);
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .certification-meta {
@@ -752,8 +930,45 @@ section,
   font-size: 0.92rem;
 }
 
+.certification-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.certification-tags span {
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(15, 118, 110, 0.09);
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .certification-link {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  border-radius: 999px;
+  padding: 9px 15px;
+  min-width: 136px;
+  background: #ffffff;
+  color: #0f766e;
   font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.certification-link:hover,
+.certification-link:focus {
+  background: rgba(15, 118, 110, 0.09);
+  color: #0f766e;
+  transform: translateY(-1px);
 }
 
 .contact .info-wrap {
@@ -961,7 +1176,7 @@ section,
   left: 18px;
   top: 50%;
   transform: translateY(-50%);
-  width: 220px;
+  width: 260px;
   max-height: calc(100vh - 24px);
   display: flex;
   flex-direction: column;
@@ -1017,7 +1232,7 @@ section,
 .writeup-toc a.active {
   background: rgba(15, 118, 110, 0.14);
   color: #0f766e;
-  font-weight: 600;
+  font-weight: 500;
   border-color: rgba(15, 118, 110, 0.24);
 }
 
@@ -1195,6 +1410,11 @@ section,
     font-size: clamp(1.05rem, 4vw, 1.28rem);
   }
 
+  .hero .typed {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .writeups-filters {
     gap: 10px;
   }
@@ -1209,23 +1429,51 @@ section,
   }
 
   .writeups-actions {
-    margin-top: 12px;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: stretch;
+    margin: 12px 0 16px;
+    gap: 6px;
+    flex-wrap: nowrap;
+    justify-content: center;
   }
 
   .writeups-page-info {
-    order: -1;
-    width: 100%;
-    min-width: 0;
-    font-size: 0.88rem;
+    order: 0;
+    width: auto;
+    min-width: 78px;
+    font-size: 0.82rem;
   }
 
   .writeups-page-btn {
-    flex: 1 1 calc(50% - 4px);
-    min-height: 44px;
-    padding: 10px 12px;
+    flex: 0 1 auto;
+    min-height: 38px;
+    padding: 8px 11px;
+  }
+
+  .certification-link {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .certification-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 1.15rem;
+  }
+
+  .certification-tags,
+  .certification-skill-tags {
+    gap: 6px;
+  }
+
+  .certification-tags span,
+  .certification-skill-tags span {
+    font-size: 0.76rem;
+    padding: 5px 8px;
+  }
+
+  .certification-breakdown {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .scroll-top {
@@ -1239,9 +1487,35 @@ section,
 }
 
 @media (max-width: 576px) {
+  #writeups {
+    padding-bottom: 28px;
+  }
+
+  .writeups-empty {
+    min-height: 220px;
+    padding: 22px 16px;
+  }
+
+  .writeups-empty-visual {
+    width: 70px;
+    height: 70px;
+    border-radius: 22px;
+  }
+
   .writeup-card {
     height: 292px;
     padding: 1.05rem 1.05rem;
+  }
+
+  .writeups-page-info {
+    min-width: 70px;
+    font-size: 0.78rem;
+  }
+
+  .writeups-page-btn {
+    min-height: 36px;
+    padding: 7px 9px;
+    font-size: 0.84rem;
   }
 
   .writeup-card h3 {

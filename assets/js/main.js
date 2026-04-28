@@ -455,9 +455,6 @@
     const PAGE_SIZE = 4;
     const selectedTechniques = new Set();
     const cardShowTimers = new WeakMap();
-    let gridResizeTimer = null;
-    let lastMatchedCount = 0;
-    let lastMeasuredCardHeight = 300;
     let currentPage = 1;
     let hasInitialized = false;
 
@@ -529,37 +526,6 @@
       });
     };
 
-    const updateWriteupsGridMinHeight = () => {
-      if (!writeupsGrid) return;
-
-      if (lastMatchedCount <= 0) {
-        writeupsGrid.style.minHeight = "0px";
-        return;
-      }
-
-      const gridStyle = window.getComputedStyle(writeupsGrid);
-      const template = (gridStyle.gridTemplateColumns || "").trim();
-      const columns = Math.max(1, template ? template.split(/\s+/).length : 1);
-      const rows = Math.max(1, Math.ceil(PAGE_SIZE / columns));
-
-      const visibleCard = writeupCards.find(
-        (card) => card.style.display !== "none" && !card.classList.contains("is-hidden")
-      );
-      const measuredHeight = visibleCard
-        ? visibleCard.getBoundingClientRect().height
-        : parseFloat(window.getComputedStyle(writeupCards[0]).height || "0");
-
-      if (Number.isFinite(measuredHeight) && measuredHeight > 0) {
-        lastMeasuredCardHeight = measuredHeight;
-      }
-
-      const cardHeight = Math.max(lastMeasuredCardHeight, 1);
-      const rowGap = parseFloat(gridStyle.rowGap || gridStyle.gap || "0") || 0;
-      const minHeight = Math.round(rows * cardHeight + Math.max(0, rows - 1) * rowGap);
-
-      writeupsGrid.style.minHeight = `${minHeight}px`;
-    };
-
     const applyFilters = (options = {}) => {
       const preserveScrollY = Number.isFinite(options.preserveScrollY)
         ? options.preserveScrollY
@@ -582,7 +548,7 @@
         const matchesOs = os === "all" || cardOs === os;
         const matchesTechnique =
           selectedTechniques.size === 0 ||
-          Array.from(selectedTechniques).some((technique) => cardTechniques.includes(technique));
+          Array.from(selectedTechniques).every((technique) => cardTechniques.includes(technique));
         const matchesSearch = !searchTerm || cardText.includes(searchTerm);
 
         const isMatch = matchesTeam && matchesDifficulty && matchesOs && matchesTechnique && matchesSearch;
@@ -649,6 +615,10 @@
         emptyState.classList.toggle("active", matchedCards.length === 0);
       }
 
+      if (writeupsGrid) {
+        writeupsGrid.classList.toggle("has-empty-state", matchedCards.length === 0);
+      }
+
       if (counterNode) {
         const label = visibleTarget === 1 ? "machine" : "machines";
         counterNode.textContent = `${visibleTarget} ${label}`;
@@ -668,8 +638,6 @@
         nextButton.disabled = currentPage >= totalPages || matchedCards.length === 0;
       }
 
-      lastMatchedCount = matchedCards.length;
-      updateWriteupsGridMinHeight();
       renderActiveFilterChips();
       hasInitialized = true;
       document.dispatchEvent(new Event("writeupCardsUpdated"));
@@ -755,13 +723,6 @@
         applyFilters({ preserveScrollY });
       });
     }
-
-    window.addEventListener("resize", () => {
-      if (gridResizeTimer) window.clearTimeout(gridResizeTimer);
-      gridResizeTimer = window.setTimeout(() => {
-        updateWriteupsGridMinHeight();
-      }, 120);
-    });
 
     applyFilters();
   }
