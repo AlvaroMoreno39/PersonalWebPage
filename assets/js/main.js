@@ -818,7 +818,8 @@
       let tocScrollTicking = false;
       let tocIsNavigating = false;
       let tocTargetId = "";
-      let tocForcedId = "";
+      let tocLockedId = "";
+      let activeTocId = "";
       const topOffset = 96;
       const alignOffset = topOffset - 8;
       let headingPositions = [];
@@ -835,16 +836,41 @@
       };
 
       const setActiveTocById = (id) => {
+        if (!id) return;
+        const changed = activeTocId !== id;
+        activeTocId = id;
+        let activeLink = null;
+
         tocLinks.forEach((link) => {
           const hash = (link.getAttribute("href") || "").replace("#", "");
-          link.classList.toggle("active", hash === id);
+          const isActive = hash === id;
+          link.classList.toggle("active", isActive);
+          if (isActive) activeLink = link;
+        });
+
+        if (changed && activeLink) {
+          activeLink.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }
+      };
+
+      const lockTocLinkHeights = () => {
+        tocLinks.forEach((link) => {
+          link.style.minHeight = "";
+          link.style.height = "";
+        });
+
+        tocLinks.forEach((link) => {
+          const height = Math.ceil(link.getBoundingClientRect().height);
+          if (height > 0) {
+            link.style.minHeight = `${height}px`;
+            link.style.height = `${height}px`;
+          }
         });
       };
 
-      const clearForcedTocSelection = () => {
-        if (!tocForcedId) return;
-        tocForcedId = "";
-        syncActiveToc();
+      const clearTocLock = () => {
+        if (tocIsNavigating || !tocLockedId) return;
+        tocLockedId = "";
       };
 
       const syncActiveToc = () => {
@@ -852,20 +878,62 @@
           setActiveTocById(tocTargetId);
           return;
         }
-        if (tocForcedId) {
-          setActiveTocById(tocForcedId);
-          return;
-        }
         if (!headingPositions.length) refreshHeadingPositions();
 
+        if (tocLockedId) {
+          const lockedHeading = document.getElementById(tocLockedId);
+          if (lockedHeading) {
+            const rect = lockedHeading.getBoundingClientRect();
+            const isStillInView = rect.bottom > topOffset && rect.top < window.innerHeight - 40;
+            if (isStillInView) {
+              setActiveTocById(tocLockedId);
+              return;
+            }
+          }
+          tocLockedId = "";
+        }
+
         const scrollY = window.scrollY;
-        const viewportBottom = scrollY + window.innerHeight - 24;
-        const marker = Math.min(scrollY + topOffset, viewportBottom);
+        const docHeight = Math.max(
+          document.body.scrollHeight,
+          document.documentElement.scrollHeight
+        );
+        const maxScroll = Math.max(docHeight - window.innerHeight, 0);
+        const finalHeadingRect = headings[headings.length - 1].getBoundingClientRect();
+        const finalHeadingVisible =
+          finalHeadingRect.top < window.innerHeight - 80 && finalHeadingRect.bottom > topOffset;
+
+        if (maxScroll - scrollY <= 8 || finalHeadingVisible) {
+          setActiveTocById(headings[headings.length - 1].id);
+          return;
+        }
+
+        const activationLine = Math.min(window.innerHeight * 0.58, window.innerHeight - 150);
         let activeIndex = 0;
 
-        for (let i = headingPositions.length - 1; i >= 0; i -= 1) {
-          if (marker >= headingPositions[i] - 1) {
+        for (let i = 0; i < headings.length; i += 1) {
+          const rect = headings[i].getBoundingClientRect();
+          if (rect.top <= activationLine) {
             activeIndex = i;
+          }
+        }
+
+        if (headings[activeIndex].getBoundingClientRect().top > activationLine) {
+          const firstVisible = headings.findIndex((heading) => {
+            const rect = heading.getBoundingClientRect();
+            return rect.bottom > topOffset && rect.top < window.innerHeight;
+          });
+          if (firstVisible >= 0) {
+            activeIndex = firstVisible;
+          }
+        }
+
+        // Near the bottom, short sections can be visible without crossing the normal
+        // activation line. In that case, prefer the lowest visible heading.
+        for (let i = headings.length - 1; i >= 0; i -= 1) {
+          const rect = headings[i].getBoundingClientRect();
+          if (rect.top < window.innerHeight - 96 && rect.bottom > topOffset) {
+            activeIndex = Math.max(activeIndex, i);
             break;
           }
         }
@@ -884,7 +952,7 @@
           const targetTop = Math.max(getHeadingTop(target) - alignOffset, 0);
           tocIsNavigating = true;
           tocTargetId = hash;
-          tocForcedId = hash;
+          tocLockedId = hash;
           setActiveTocById(hash);
           smoothScrollTo(targetTop, {
             duration: 300,
@@ -910,12 +978,14 @@
         });
       });
 
+      lockTocLinkHeights();
       setBottomSpacerHeight();
       syncActiveToc();
 
       window.addEventListener(
         "resize",
         () => {
+          lockTocLinkHeights();
           setBottomSpacerHeight();
           syncActiveToc();
         },
@@ -923,6 +993,7 @@
       );
 
       window.setTimeout(() => {
+        lockTocLinkHeights();
         setBottomSpacerHeight();
         syncActiveToc();
       }, 180);
@@ -957,8 +1028,9 @@
         });
       }, { passive: true });
 
-      window.addEventListener("wheel", clearForcedTocSelection, { passive: true });
-      window.addEventListener("touchstart", clearForcedTocSelection, { passive: true });
+      window.addEventListener("wheel", clearTocLock, { passive: true });
+      window.addEventListener("touchstart", clearTocLock, { passive: true });
+      window.addEventListener("keydown", clearTocLock);
     }
 
     // Add copy button to each code block.

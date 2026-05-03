@@ -1224,7 +1224,7 @@ section,
   left: 18px;
   top: 50%;
   transform: translateY(-50%);
-  width: 260px;
+  width: 310px;
   max-height: calc(100vh - 24px);
   display: flex;
   flex-direction: column;
@@ -1253,6 +1253,7 @@ section,
   padding: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   max-height: calc(100vh - 86px);
   padding-right: 2px;
 }
@@ -1263,11 +1264,20 @@ section,
 
 .writeup-toc a {
   display: block;
+  box-sizing: border-box;
+  width: 100%;
   padding: 6px 9px;
   border-radius: 8px;
   font-size: 0.81rem;
+  font-weight: 500;
+  line-height: 1.25;
   color: #334155;
   border: 1px solid transparent;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
   transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
@@ -1282,6 +1292,9 @@ section,
   color: #0f766e;
   font-weight: 500;
   border-color: rgba(15, 118, 110, 0.24);
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 @media (max-width: 1400px) {
