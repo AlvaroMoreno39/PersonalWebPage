@@ -908,17 +908,18 @@
           return;
         }
 
-        const activationLine = Math.min(window.innerHeight * 0.58, window.innerHeight - 150);
+        const activationLine = topOffset + 36;
+        const activationMarker = scrollY + activationLine;
         let activeIndex = 0;
 
-        for (let i = 0; i < headings.length; i += 1) {
-          const rect = headings[i].getBoundingClientRect();
-          if (rect.top <= activationLine) {
+        for (let i = headingPositions.length - 1; i >= 0; i -= 1) {
+          if (activationMarker >= headingPositions[i] - 1) {
             activeIndex = i;
+            break;
           }
         }
 
-        if (headings[activeIndex].getBoundingClientRect().top > activationLine) {
+        if (activeIndex === 0 && headings[0].getBoundingClientRect().top > activationLine) {
           const firstVisible = headings.findIndex((heading) => {
             const rect = heading.getBoundingClientRect();
             return rect.bottom > topOffset && rect.top < window.innerHeight;
@@ -928,13 +929,17 @@
           }
         }
 
-        // Near the bottom, short sections can be visible without crossing the normal
-        // activation line. In that case, prefer the lowest visible heading.
-        for (let i = headings.length - 1; i >= 0; i -= 1) {
-          const rect = headings[i].getBoundingClientRect();
-          if (rect.top < window.innerHeight - 96 && rect.bottom > topOffset) {
-            activeIndex = Math.max(activeIndex, i);
-            break;
+        const nearWriteupEnd = maxScroll - scrollY <= window.innerHeight * 0.45;
+
+        // Only near the end, short final sections can be visible without crossing
+        // the normal activation line. Elsewhere, keep the classic scroll-spy feel.
+        if (nearWriteupEnd) {
+          for (let i = headings.length - 1; i >= 0; i -= 1) {
+            const rect = headings[i].getBoundingClientRect();
+            if (rect.top < window.innerHeight - 96 && rect.bottom > topOffset) {
+              activeIndex = Math.max(activeIndex, i);
+              break;
+            }
           }
         }
 
