@@ -235,6 +235,19 @@
     });
   }
 
+  document.addEventListener("pointerup", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const action = target.closest(
+      ".certification-link, .back-link, .cv-downloads a, .btn, .writeups-page-btn, .filter-reset"
+    );
+
+    if (action instanceof HTMLElement) {
+      window.setTimeout(() => action.blur(), 0);
+    }
+  });
+
   function initAos() {
     const revealAosNodes = () => {
       document.querySelectorAll("[data-aos]").forEach((node) => {

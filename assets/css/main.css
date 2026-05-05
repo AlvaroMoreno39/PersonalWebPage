@@ -981,15 +981,33 @@ section,
   background: #ffffff;
   color: #0f766e;
   font-weight: 600;
+  text-decoration: none;
   white-space: nowrap;
-  cursor: default;
+  cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
-.certification-link:hover,
-.certification-link:focus {
+.certification-link:hover {
   background: rgba(15, 118, 110, 0.09);
   color: #0f766e;
+  transform: translateY(-1px);
+}
+
+.certification-link:visited {
+  color: #0f766e;
+}
+
+.certification-link:focus {
+  outline: none;
+  background: #ffffff;
+  color: #0f766e;
+  transform: none;
+}
+
+.certification-link:focus-visible {
+  background: rgba(15, 118, 110, 0.09);
+  outline: 3px solid rgba(15, 118, 110, 0.22);
+  outline-offset: 3px;
   transform: translateY(-1px);
 }
 
