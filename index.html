@@ -6,8 +6,8 @@
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Alvaro Moreno Lumbreras - Junior SOC Analyst Portfolio</title>
   <meta name="description"
-    content="Portfolio of Alvaro Moreno Lumbreras, junior cybersecurity analyst focused on SOC Level 1, SIEM alert triage, log analysis, incident investigation, and technical reporting.">
-  <meta name="keywords" content="Alvaro Moreno, SOC analyst, cybersecurity analyst, SIEM, alert triage, log analysis, incident response, IT support, portfolio">
+    content="Portfolio of Alvaro Moreno Lumbreras, junior cybersecurity analyst focused on SOC Level 1, SIEM alert triage, Splunk, Elastic/Kibana, log analysis, incident investigation, and technical reporting.">
+  <meta name="keywords" content="Alvaro Moreno, SOC analyst, cybersecurity analyst, SIEM, Splunk, Elastic, Kibana, alert triage, log analysis, incident response, IT support, portfolio">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -75,7 +75,7 @@
         <p>
           I am a Junior SOC & Cybersecurity Analyst focused on security monitoring, alert triage, and incident
           investigation. I have hands-on experience analyzing logs, investigating alerts, and working with SIEM tools
-          such as Elastic/Kibana to identify suspicious activity and determine true or false positives.
+          such as Elastic/Kibana and Splunk to identify suspicious activity and determine true or false positives.
         </p>
         <p>
           My training includes both defensive and offensive cybersecurity, allowing me to understand how attacks are
@@ -117,7 +117,7 @@
               <div class="col-lg-6">
                 <ul>
                   <li><i class="bi bi-chevron-right"></i> <strong>Languages:</strong> <span>Spanish, English</span></li>
-                  <li><i class="bi bi-chevron-right"></i> <strong>Focus:</strong> <span>SOC, SIEM,
+                  <li><i class="bi bi-chevron-right"></i> <strong>Focus:</strong> <span>SOC, SIEM, Splunk,
                       Cybersecurity</span></li>
                 </ul>
               </div>
@@ -151,8 +151,8 @@
                 Hands-on training path designed to prepare for the HTB Certified Junior Cybersecurity Associate
                 (CJCA). It helped me build practical offensive skills such as enumeration, exploitation, Linux and
                 Windows fundamentals, web penetration testing, network service analysis, privilege escalation, and
-                technical reporting, alongside defensive skills such as SIEM analysis, alert triage, true and false
-                positive classification, and evidence-based investigation.
+                technical reporting, alongside defensive skills such as SIEM analysis with Elastic/Kibana and Splunk,
+                alert triage, true and false positive classification, and evidence-based investigation.
               </p>
             </div>
 
@@ -346,6 +346,7 @@
             <label for="filter-difficulty">Difficulty</label>
             <select id="filter-difficulty">
               <option value="all">All</option>
+              <option value="very-easy">Very Easy</option>
               <option value="easy">Easy</option>
               <option value="medium">Medium</option>
               <option value="hard">Hard</option>
@@ -369,6 +370,15 @@
               <option value="lateral-movement">Lateral Movement</option>
               <option value="privilege-escalation">Privilege Escalation</option>
               <option value="active-directory">Active Directory</option>
+              <option value="dfir">DFIR</option>
+              <option value="incident-response">Incident Response</option>
+              <option value="threat-hunting">Threat Hunting</option>
+              <option value="digital-forensics">Digital Forensics</option>
+              <option value="timeline-analysis">Timeline Analysis</option>
+              <option value="mft-analysis">MFT Analysis</option>
+              <option value="ads-analysis">ADS Analysis</option>
+              <option value="ioc-extraction">IOC Extraction</option>
+              <option value="malware-analysis">Malware Analysis</option>
               <option value="siem">SIEM</option>
               <option value="log-analysis">Log Analysis</option>
               <option value="backup-abuse">Backup Abuse</option>
@@ -427,6 +437,29 @@
             </div>
           </a>
 
+          <a class="writeup-card" href="writeups/bft-htb-very-easy.html" data-team="blue" data-difficulty="very-easy" data-os="windows"
+            data-techniques="dfir,incident-response,threat-hunting,digital-forensics,timeline-analysis,mft-analysis,ads-analysis,ioc-extraction,malware-analysis">
+            <div class="writeup-card-body">
+              <h3>BFT - HTB</h3>
+              <p>BFT is a Blue Team Sherlock focused on NTFS forensic analysis using the Master File Table. The investigation reconstructs a phishing-driven attack chain by identifying the initial ZIP download, extracting Zone.Identifier metadata, locating the executed payload, validating timestamps, calculating the MFT record offset, and extracting the C2 server from resident file data.</p>
+              <div class="tag-list">
+                <span class="tag">Blue Team</span>
+                <span class="tag">Very Easy</span>
+                <span class="tag">Windows</span>
+                <span class="tag">DFIR</span>
+                <span class="tag">Incident Response</span>
+                <span class="tag">Threat Hunting</span>
+                <span class="tag">Digital Forensics</span>
+                <span class="tag">Timeline Analysis</span>
+                <span class="tag">MFT Analysis</span>
+                <span class="tag">ADS Analysis</span>
+                <span class="tag">IOC Extraction</span>
+                <span class="tag">Malware Analysis</span>
+                <span class="tag">NTFS</span>
+              </div>
+            </div>
+          </a>
+
           <div class="writeups-empty" id="writeups-empty" aria-live="polite">
             <div class="writeups-empty-visual" aria-hidden="true">
               <span></span>
@@ -481,7 +514,8 @@
               </div>
               <div class="certification-skill-tags" aria-label="Certification skills">
                 <span>Penetration Testing</span>
-                <span>SIEM (Elastic/Kibana)</span>
+                <span>SIEM</span>
+                <span>Elastic/Kibana</span>
                 <span>Alert Triage</span>
                 <span>Log Analysis</span>
                 <span>Incident Investigation</span>
