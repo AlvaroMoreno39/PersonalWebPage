@@ -551,6 +551,14 @@ section,
   align-items: stretch;
 }
 
+.writeups-grid.is-filtering-out {
+  animation: writeupsGridOut 0.14s ease forwards;
+}
+
+.writeups-grid.is-filtering-in {
+  animation: writeupsGridIn 0.24s ease both;
+}
+
 .writeups-grid.has-empty-state {
   min-height: 300px;
 }
@@ -566,6 +574,10 @@ section,
 }
 
 @media (max-width: 992px) {
+  .certifications-list {
+    grid-template-columns: 1fr;
+  }
+
   .writeups-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -591,10 +603,11 @@ section,
   color: inherit;
   height: 300px;
   overflow: hidden;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.2s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.24s ease;
   opacity: 1;
   transform: translateY(0);
   transform-origin: center;
+  --card-stagger: 0ms;
   will-change: transform, box-shadow, opacity;
 }
 
@@ -619,10 +632,6 @@ section,
   display: none;
 }
 
-.writeup-card.is-leaving {
-  animation: cardFadeOut 0.22s ease forwards;
-}
-
 .writeup-card.is-visible {
   display: block;
   opacity: 1;
@@ -630,11 +639,13 @@ section,
 }
 
 .writeup-card.is-entering {
-  animation: cardFadeIn 0.34s ease;
+  animation: cardFadeIn 0.34s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+  animation-delay: var(--card-stagger);
 }
 
 .writeup-card.is-filter-refresh {
-  animation: cardFilterRefresh 0.24s ease;
+  animation: cardFilterRefresh 0.3s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+  animation-delay: var(--card-stagger);
 }
 
 .writeup-card-body {
@@ -846,31 +857,41 @@ section,
 
 .certifications-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  align-items: start;
 }
 
 .certification-item {
-  padding: 1.25rem 1.35rem;
+  padding: 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
 }
 
-.certification-item > div {
+.certification-content {
   flex: 1;
   min-width: 0;
 }
 
+.certification-item-featured {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  max-width: none;
+  margin: 0;
+}
+
 .certification-item h3 {
   margin: 0 0 6px;
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .certification-item p:not(.certification-meta) {
-  margin: 8px 0 0;
+  margin: 7px 0 0;
   color: #475569;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .certification-summary {
@@ -879,20 +900,20 @@ section,
 
 .certification-breakdown {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 14px;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .certification-breakdown div {
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.62);
-  padding: 12px 13px;
+  padding: 9px 11px;
 }
 
 .certification-breakdown h4 {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   font-size: 0.88rem;
   color: #0f766e;
 }
@@ -904,14 +925,14 @@ section,
 }
 
 .certification-breakdown li + li {
-  margin-top: 5px;
+  margin-top: 4px;
 }
 
 .certification-skill-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 14px;
+  gap: 6px;
+  margin-top: 12px;
 }
 
 .certification-skill-tags span {
@@ -969,6 +990,37 @@ section,
   line-height: 1;
 }
 
+.certification-proof {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.certification-preview {
+  display: block;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.1);
+}
+
+.certification-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 992px) {
+  .certifications-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .certification-link {
   flex: 0 0 auto;
   display: inline-flex;
@@ -976,8 +1028,8 @@ section,
   justify-content: center;
   border: 1px solid rgba(15, 118, 110, 0.28);
   border-radius: 999px;
-  padding: 9px 15px;
-  min-width: 136px;
+  padding: 8px 14px;
+  min-width: 150px;
   background: #ffffff;
   color: #0f766e;
   font-weight: 600;
@@ -1395,7 +1447,7 @@ section,
 @keyframes cardFadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(12px) scale(0.99);
   }
   to {
     opacity: 1;
@@ -1403,23 +1455,38 @@ section,
   }
 }
 
-@keyframes cardFadeOut {
+@keyframes writeupsGridOut {
   from {
     opacity: 1;
     transform: translateY(0);
   }
   to {
-    opacity: 0;
-    transform: translateY(10px);
+    opacity: 0.35;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes writeupsGridIn {
+  from {
+    opacity: 0.72;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @keyframes cardFilterRefresh {
-  from {
-    opacity: 0.72;
-    transform: translateY(4px) scale(0.995);
+  0% {
+    opacity: 0.82;
+    transform: translateY(5px) scale(0.99);
   }
-  to {
+  60% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.006);
+  }
+  100% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
@@ -1450,7 +1517,8 @@ section,
 @media (prefers-reduced-motion: reduce) {
   .writeup-card,
   .writeup-card.is-visible,
-  .writeup-card.is-leaving,
+  .writeups-grid.is-filtering-out,
+  .writeups-grid.is-filtering-in,
   .writeup-card.is-filter-refresh,
   .writeups-empty,
   .writeup-toc a,
@@ -1573,6 +1641,16 @@ section,
     align-items: flex-start;
     gap: 14px;
     padding: 1.15rem;
+  }
+
+  .certification-proof {
+    width: 100%;
+    flex: none;
+    align-items: stretch;
+  }
+
+  .certification-preview {
+    width: 100%;
   }
 
   .certification-tags,

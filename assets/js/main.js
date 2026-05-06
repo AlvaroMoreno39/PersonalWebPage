@@ -470,6 +470,7 @@
     const cardShowTimers = new WeakMap();
     let currentPage = 1;
     let hasInitialized = false;
+    let filterAnimationTimer = null;
 
     if (!writeupCards.length || !teamSelect || !difficultySelect || !osSelect || !techniqueSelect || !searchInput) return;
 
@@ -539,10 +540,7 @@
       });
     };
 
-    const applyFilters = (options = {}) => {
-      const preserveScrollY = Number.isFinite(options.preserveScrollY)
-        ? options.preserveScrollY
-        : null;
+    const applyFilterState = ({ preserveScrollY = null } = {}) => {
       const team = teamSelect.value;
       const difficulty = difficultySelect.value;
       const os = osSelect.value;
@@ -568,7 +566,6 @@
         if (isMatch) matchedCards.push(card);
       });
 
-      const matchedSet = new Set(matchedCards);
       const matchedPositions = new Map(matchedCards.map((card, index) => [card, index]));
       const totalPages = Math.max(1, Math.ceil(matchedCards.length / PAGE_SIZE));
       if (currentPage > totalPages) currentPage = totalPages;
@@ -585,9 +582,11 @@
           cardShowTimers.delete(card);
         }
 
-        const isMatch = matchedSet.has(card);
         const position = matchedPositions.get(card);
-        const isWithinPage = isMatch && position >= startIndex && position < endIndex;
+        const isWithinPage = position !== undefined && position >= startIndex && position < endIndex;
+        const pagePosition = isWithinPage ? position - startIndex : 0;
+        const stagger = `${Math.min(pagePosition, PAGE_SIZE - 1) * 42}ms`;
+        card.style.setProperty("--card-stagger", stagger);
 
         if (isWithinPage) {
           if (!hasInitialized) {
@@ -597,25 +596,17 @@
             return;
           }
 
-          if (card.classList.contains("is-visible") && card.style.display !== "none") return;
-
           card.style.display = "block";
-          card.classList.remove("is-hidden", "is-leaving", "is-visible", "is-filter-refresh");
+          card.classList.remove("is-hidden", "is-leaving", "is-visible", "is-filter-refresh", "is-entering");
+          void card.offsetWidth;
           card.classList.add("is-entering");
 
           const timer = window.setTimeout(() => {
             card.classList.remove("is-entering");
             card.classList.add("is-visible");
             cardShowTimers.delete(card);
-          }, 320);
+          }, 360 + Math.min(pagePosition, PAGE_SIZE - 1) * 42);
           cardShowTimers.set(card, timer);
-          return;
-        }
-
-        if (!hasInitialized) {
-          card.classList.remove("is-visible", "is-leaving", "is-entering", "is-filter-refresh");
-          card.classList.add("is-hidden");
-          card.style.display = "none";
           return;
         }
 
@@ -655,6 +646,35 @@
       hasInitialized = true;
       document.dispatchEvent(new Event("writeupCardsUpdated"));
       restoreScrollY(preserveScrollY);
+    };
+
+    const applyFilters = (options = {}) => {
+      const preserveScrollY = Number.isFinite(options.preserveScrollY)
+        ? options.preserveScrollY
+        : null;
+
+      if (!hasInitialized || !writeupsGrid) {
+        applyFilterState({ preserveScrollY });
+        return;
+      }
+
+      if (filterAnimationTimer) {
+        window.clearTimeout(filterAnimationTimer);
+      }
+
+      writeupsGrid.classList.add("is-filtering-out");
+      writeupsGrid.classList.remove("is-filtering-in");
+
+      filterAnimationTimer = window.setTimeout(() => {
+        applyFilterState({ preserveScrollY });
+        writeupsGrid.classList.remove("is-filtering-out");
+        writeupsGrid.classList.add("is-filtering-in");
+
+        filterAnimationTimer = window.setTimeout(() => {
+          writeupsGrid.classList.remove("is-filtering-in");
+          filterAnimationTimer = null;
+        }, 420);
+      }, 135);
     };
 
     const resetFilters = () => {
