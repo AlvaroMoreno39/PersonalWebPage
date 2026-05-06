@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Unit42 - HTB | Writeup</title>
+  <meta name="description"
+    content="Unit42 HTB Sherlock writeup covering Sysmon log analysis, malware execution, Dropbox delivery, timestomping, DNS analysis, network connections, and process termination.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <div class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
+          </div>
+
+          <h1>Unit42 - HTB</h1>
+          <div class="tag-list">
+            <span class="tag">Blue Team</span>
+            <span class="tag">Very Easy</span>
+            <span class="tag">Windows</span>
+            <span class="tag">Sysmon</span>
+            <span class="tag">DFIR</span>
+            <span class="tag">Threat Hunting</span>
+            <span class="tag">Malware Analysis</span>
+            <span class="tag">Initial Access</span>
+            <span class="tag">User Execution</span>
+            <span class="tag">Time Stomping</span>
+            <span class="tag">DNS Analysis</span>
+            <span class="tag">Network Connection</span>
+            <span class="tag">File Creation</span>
+            <span class="tag">UltraVNC</span>
+            <span class="tag">MITRE ATT&amp;CK</span>
+            <span class="tag">T1204</span>
+            <span class="tag">T1070.006</span>
+            <span class="tag">T1189</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            Unit42 is a Blue Team Sherlock based on Sysmon logs from a Windows machine infected by a malicious file
+            related to a backdoored UltraVNC campaign. The investigation focuses on identifying the initial malicious
+            process, understanding how the malware was delivered, analyzing files dropped on disk, detecting
+            timestomping activity, and tracing the malware's DNS and network behavior.
+          </p>
+          <p>The main evidence source was:</p>
+          <pre><code class="language-text">Microsoft-Windows-Sysmon-Operational.evtx</code></pre>
+          <p>The EVTX file was parsed into CSV format and analyzed using Timeline Explorer.</p>
+
+          <h2>Tools Used</h2>
+          <ul>
+            <li>EvtxECmd</li>
+            <li>Timeline Explorer</li>
+            <li>PowerShell</li>
+            <li>Sysmon logs</li>
+          </ul>
+
+          <h2>Useful Sysmon Event IDs</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Event ID</th>
+                <th>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>Process Creation</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>File creation time changed</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>Network Connection</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>Process Terminated</td>
+              </tr>
+              <tr>
+                <td>11</td>
+                <td>File Created</td>
+              </tr>
+              <tr>
+                <td>15</td>
+                <td>FileCreateStreamHash / Zone.Identifier</td>
+              </tr>
+              <tr>
+                <td>22</td>
+                <td>DNS Query</td>
+              </tr>
+              <tr>
+                <td>23</td>
+                <td>File Deleted</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2>Task 1 - Event ID 11 Count</h2>
+          <p><strong>Question:</strong> How many Event ID 11 logs are there?</p>
+          <p><strong>Approach:</strong> I filtered the parsed Sysmon logs in Timeline Explorer using:</p>
+          <pre><code class="language-text">Event ID = 11</code></pre>
+          <p>
+            Sysmon Event ID 11 represents file creation events. After applying the filter, Timeline Explorer showed
+            56 visible rows.
+          </p>
+          <figure>
+            <img src="../assets/img/Unit42/01-event-id-11-file-created-count.png" alt="Timeline Explorer filtered for Sysmon Event ID 11">
+            <figcaption>Filtering for Event ID 11 shows the number of file creation events.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">56</code></pre>
+
+          <h2>Task 2 - Malicious Process</h2>
+          <p>
+            <strong>Question:</strong> Whenever a process is created in memory, an event with Event ID 1 is recorded
+            with details such as command line, hashes, process path, parent process path, etc. What is the malicious
+            process that infected the victim's system?
+          </p>
+          <p><strong>Approach:</strong> I filtered for Sysmon Event ID 1:</p>
+          <pre><code class="language-text">Event ID = 1</code></pre>
+          <p>
+            Event ID 1 records process creation events, including the executed process, command line, parent process,
+            hashes, and execution path.
+          </p>
+          <figure>
+            <img src="../assets/img/Unit42/02-event-id-1-process-creation-filter.png" alt="Timeline Explorer filtered for Sysmon Event ID 1">
+            <figcaption>Event ID 1 reveals process creation activity.</figcaption>
+          </figure>
+          <p>I looked for suspicious indicators such as:</p>
+          <ul>
+            <li>Execution from the user's Downloads folder</li>
+            <li>A suspicious filename</li>
+            <li>A double extension</li>
+            <li>A parent process of <code>explorer.exe</code>, indicating user execution</li>
+          </ul>
+          <figure>
+            <img src="../assets/img/Unit42/03-malicious-process-downloads-execution.png" alt="Suspicious process executed from Downloads folder">
+            <figcaption>The suspicious executable uses a double extension and runs from Downloads.</figcaption>
+          </figure>
+          <p>The suspicious process was:</p>
+          <pre><code class="language-text">C:\Users\CyberJunkie\Downloads\Preventivo24.02.14.exe.exe</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">C:\Users\CyberJunkie\Downloads\Preventivo24.02.14.exe.exe</code></pre>
+
+          <h2>Task 3 - Cloud Drive Used</h2>
+          <p><strong>Question:</strong> Which cloud drive was used to distribute the malware?</p>
+          <p>
+            <strong>Approach:</strong> To identify the cloud service used to distribute the malware, I searched the
+            parsed Sysmon CSV files for common cloud storage keywords using PowerShell:
+          </p>
+          <pre><code class="language-powershell">Select-String -Path C:\Users\moree39\Downloads\sysmon_output\*.csv -Pattern "drive","dropbox","mega","onedrive","mediafire","pcloud","wetransfer","yandex","box"</code></pre>
+          <figure>
+            <img src="../assets/img/Unit42/04-dropbox-zone-identifier-search.png" alt="PowerShell search showing Dropbox-related URLs">
+            <figcaption>Keyword searching the parsed logs reveals Dropbox-related source URLs.</figcaption>
+          </figure>
+          <p>The results showed several Dropbox-related domains:</p>
+          <pre><code class="language-text">dropboxusercontent.com
+d.dropbox.com
+https://www.dropbox.com/</code></pre>
+          <p>The strongest evidence came from the <code>Zone.Identifier</code> metadata attached to the downloaded malicious file:</p>
+          <pre><code class="language-text">TargetFilename: C:\Users\CyberJunkie\Downloads\Preventivo24.02.14.exe.exe:Zone.Identifier</code></pre>
+          <p>Inside that entry, the source URLs were visible:</p>
+          <pre><code class="language-text">ReferrerUrl=https://www.dropbox.com/
+HostUrl=https://uc2f030016253ec53f4953980a4e.dl.dropboxusercontent.com/</code></pre>
+          <p>This confirmed that the malware was downloaded from Dropbox.</p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Dropbox</code></pre>
+
+          <h2>Task 4 - PDF Timestamp</h2>
+          <p><strong>Question:</strong> What timestamp was the PDF file changed to?</p>
+          <p>The hint mentioned Time Stomping, so I searched for PDF-related activity in Timeline Explorer using:</p>
+          <pre><code class="language-text">.pdf</code></pre>
+          <figure>
+            <img src="../assets/img/Unit42/05-pdf-timestomping-search.png" alt="Timeline Explorer search for PDF artifacts">
+            <figcaption>Searching for PDF artifacts narrows the timestomping investigation.</figcaption>
+          </figure>
+          <p>Then I focused on Sysmon Event ID 2:</p>
+          <pre><code class="language-text">Event ID = 2</code></pre>
+          <p>Event ID 2 records when a file creation timestamp is changed.</p>
+          <figure>
+            <img src="../assets/img/Unit42/06-event-id-2-file-time-changed.png" alt="Timeline Explorer filtered for Sysmon Event ID 2">
+            <figcaption>Event ID 2 identifies file creation time changes.</figcaption>
+          </figure>
+          <p>The relevant event showed:</p>
+          <pre><code class="language-text">TargetFilename: C:\Users\CyberJunkie\AppData\Roaming\Photo and Fax Vn\Photo and vn 1.1.2\install\F97891C\TempFolder\~.pdf
+CreationTimeUTC: 2024-01-14 08:10:06.029
+PreviousCreationTimeUTC: 2024-02-14 03:41:58.404</code></pre>
+          <figure>
+            <img src="../assets/img/Unit42/07-pdf-creation-time-modified.png" alt="Timeline Explorer details showing the modified PDF timestamp">
+            <figcaption>The malware changed the PDF creation time to an older timestamp.</figcaption>
+          </figure>
+          <p>
+            <code>PreviousCreationTimeUTC</code> was the original timestamp, while <code>CreationTimeUTC</code> was the
+            fake timestamp set by the malware.
+          </p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">2024-01-14 08:10:06</code></pre>
+
+          <h2>Task 5 - once.cmd Location</h2>
+          <p><strong>Question:</strong> Where was <code>once.cmd</code> created on disk?</p>
+          <p>I searched for:</p>
+          <pre><code class="language-text">once.cmd</code></pre>
+          <figure>
+            <img src="../assets/img/Unit42/08-once-cmd-search.png" alt="Timeline Explorer search for once.cmd">
+            <figcaption>Searching for <code>once.cmd</code> reveals the relevant file creation activity.</figcaption>
+          </figure>
+          <p>Then I filtered for Sysmon Event ID 11:</p>
+          <pre><code class="language-text">Event ID = 11</code></pre>
+          <figure>
+            <img src="../assets/img/Unit42/09-once-cmd-event-id-11-filter.png" alt="Timeline Explorer filtered for once.cmd Event ID 11">
+            <figcaption>Event ID 11 confirms file creation events for <code>once.cmd</code>.</figcaption>
+          </figure>
+          <p>Two relevant results appeared:</p>
+          <figure>
+            <img src="../assets/img/Unit42/10-once-cmd-created-paths.png" alt="Two once.cmd creation paths in Timeline Explorer">
+            <figcaption>The first creation event is tied directly to the malicious executable.</figcaption>
+          </figure>
+          <p>First event:</p>
+          <pre><code class="language-text">Image: C:\Users\CyberJunkie\Downloads\Preventivo24.02.14.exe.exe
+TargetFilename: C:\Users\CyberJunkie\AppData\Roaming\Photo and Fax Vn\Photo and vn 1.1.2\install\F97891C\WindowsVolume\Games\once.cmd
+CreationUtcTime: 2024-02-14 03:41:58.404</code></pre>
+          <p>Second event:</p>
+          <pre><code class="language-text">Image: C:\Windows\system32\msiexec.exe
+TargetFilename: C:\Games\once.cmd
+CreationUtcTime: 2024-02-14 03:41:58.577</code></pre>
+          <p>
+            The first event happened earlier and was created directly by the malicious executable. Therefore, this was
+            the original location where <code>once.cmd</code> was created on disk.
+          </p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">C:\Users\CyberJunkie\AppData\Roaming\Photo and Fax Vn\Photo and vn 1.1.2\install\F97891C\WindowsVolume\Games\once.cmd</code></pre>
+
+          <h2>Task 6 - Dummy Domain</h2>
+          <p><strong>Question:</strong> What dummy domain did the malicious file try to connect to?</p>
+          <p>I filtered for DNS queries using Sysmon Event ID 22:</p>
+          <pre><code class="language-text">Event ID = 22</code></pre>
+          <figure>
+            <img src="../assets/img/Unit42/11-dns-query-event-id-22-filter.png" alt="Timeline Explorer filtered for Sysmon Event ID 22 DNS queries">
+            <figcaption>Event ID 22 exposes DNS query activity.</figcaption>
+          </figure>
+          <p>Then I compared the queried domains with the process responsible for each query.</p>
+          <figure>
+            <img src="../assets/img/Unit42/12-example-domain-malicious-query.png" alt="Malicious process querying www.example.com">
+            <figcaption>The malicious executable queried <code>www.example.com</code> directly.</figcaption>
+          </figure>
+          <p>The Dropbox-related domains were queried by Firefox, which matched the malware download activity:</p>
+          <pre><code class="language-text">Image: C:\Program Files\Mozilla Firefox\firefox.exe
+QueryName: d.dropbox.com</code></pre>
+          <p>The malicious process itself queried:</p>
+          <pre><code class="language-text">Image: C:\Users\CyberJunkie\Downloads\Preventivo24.02.14.exe.exe
+QueryName: www.example.com</code></pre>
+          <p>Since <code>www.example.com</code> was queried directly by the malware, it was most likely used as a connectivity check.</p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">www.example.com</code></pre>
+
+          <h2>Task 7 - Destination IP</h2>
+          <p><strong>Question:</strong> Which IP address did the malicious process try to reach out to?</p>
+          <p>To find the actual outbound connection, I filtered for Sysmon Event ID 3:</p>
+          <pre><code class="language-text">Event ID = 3</code></pre>
+          <p>Event ID 3 records network connections.</p>
+          <figure>
+            <img src="../assets/img/Unit42/13-network-connection-event-id-3-filter.png" alt="Timeline Explorer filtered for Sysmon Event ID 3 network connections">
+            <figcaption>Event ID 3 shows outbound network connection activity.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/Unit42/14-destination-ip-connection.png" alt="Timeline Explorer details showing destination IP 93.184.216.34">
+            <figcaption>The destination IP correlates with the previous DNS query to <code>www.example.com</code>.</figcaption>
+          </figure>
+          <p>There was one relevant network connection event. Inside the event details, the destination IP was:</p>
+          <pre><code class="language-text">DestinationIp: 93.184.216.34</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">93.184.216.34</code></pre>
+
+          <h2>Task 8 - Process Termination</h2>
+          <p><strong>Question:</strong> When did the malicious process terminate itself?</p>
+          <p>I filtered for Sysmon Event ID 5:</p>
+          <pre><code class="language-text">Event ID = 5</code></pre>
+          <p>Event ID 5 records process termination events.</p>
+          <figure>
+            <img src="../assets/img/Unit42/15-process-termination-event-id-5-filter.png" alt="Timeline Explorer filtered for Sysmon Event ID 5">
+            <figcaption>Event ID 5 shows process termination events.</figcaption>
+          </figure>
+          <p>The relevant event was associated with the malicious executable:</p>
+          <pre><code class="language-text">Image: C:\Users\CyberJunkie\Downloads\Preventivo24.02.14.exe.exe</code></pre>
+          <figure>
+            <img src="../assets/img/Unit42/16-malicious-process-terminated.png" alt="Malicious process termination event">
+            <figcaption>The process termination event is tied to the malicious executable.</figcaption>
+          </figure>
+          <p>The event payload showed:</p>
+          <pre><code class="language-text">UtcTime: 2024-02-14 03:41:58.795</code></pre>
+          <figure>
+            <img src="../assets/img/Unit42/17-process-termination-timestamp.png" alt="Process termination timestamp in event details">
+            <figcaption>The timestamp confirms when the malicious process terminated itself.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">2024-02-14 03:41:58</code></pre>
+
+          <h2>Conclusion</h2>
+          <p>
+            This investigation reconstructed the initial infection chain using only Sysmon logs. The malicious file was
+            downloaded from Dropbox, executed from the user's Downloads folder, created several files on disk, performed
+            timestomping to hide artifacts, checked internet connectivity using <code>www.example.com</code>, connected
+            to <code>93.184.216.34</code>, and then terminated itself after completing the infection process.
+          </p>
+          <p>
+            The key evidence came from correlating different Sysmon event types: process creation, file creation, DNS
+            queries, network connections, timestamp modification, and process termination.
+          </p>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/js/main.js" defer></script>
+</body>
+
+</html>
