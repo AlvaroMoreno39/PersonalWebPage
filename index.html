@@ -21,7 +21,7 @@
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
 
-  <link href="assets/css/main.css?v=20260507-portfolio-certifications" rel="stylesheet">
+  <link href="assets/css/main.css?v=20260507-writeup-platforms" rel="stylesheet">
 </head>
 
 <body class="index-page">
@@ -395,7 +395,8 @@
           <a class="writeup-card" href="writeups/codeparttwo-htb-easy.html" data-team="red" data-difficulty="easy" data-os="linux"
             data-techniques="web,enumeration,credential-harvesting,lateral-movement,privilege-escalation,backup-abuse">
             <div class="writeup-card-body">
-              <h3>CodePartTwo - HTB</h3>
+              <h3>CodePartTwo</h3>
+              <div class="writeup-platform"><i class="bi bi-terminal"></i><span>Hack The Box</span></div>
               <p>CodePartTwo is an easy Linux machine that starts with a vulnerable web application and ends with a straightforward but very instructive privilege escalation path. The initial foothold comes from a js2py sandbox escape that allows server-side command execution from a JavaScript editor exposed in the application. After gaining a shell as the app user, a local SQLite database reveals password hashes that can be cracked to obtain SSH access as marco.</p>
               <div class="tag-list">
                 <span class="tag">Red Team</span>
@@ -420,7 +421,8 @@
           <a class="writeup-card" href="writeups/cicada-htb-easy.html" data-team="red" data-difficulty="easy" data-os="windows"
             data-techniques="enumeration,active-directory,credential-harvesting,lateral-movement,privilege-escalation,backup-abuse">
             <div class="writeup-card-body">
-              <h3>Cicada - HTB</h3>
+              <h3>Cicada</h3>
+              <div class="writeup-platform"><i class="bi bi-terminal"></i><span>Hack The Box</span></div>
               <p>Cicada is a clean AD attack chain: anonymous SMB access leaks a default password, RID brute-forcing and spraying lead to valid users, and credential hunting across LDAP descriptions and DEV scripts ends in WinRM access. Backup Operators privileges are then abused with VSS to extract NTDS.dit and SYSTEM, enabling Pass-the-Hash as Administrator.</p>
               <div class="tag-list">
                 <span class="tag">Red Team</span>
@@ -443,7 +445,8 @@
           <a class="writeup-card" href="writeups/bft-htb-very-easy.html" data-team="blue" data-difficulty="very-easy" data-os="windows"
             data-techniques="dfir,incident-response,threat-hunting,digital-forensics,timeline-analysis,mft-analysis,ads-analysis,ioc-extraction,malware-analysis">
             <div class="writeup-card-body">
-              <h3>BFT - HTB</h3>
+              <h3>BFT</h3>
+              <div class="writeup-platform"><i class="bi bi-terminal"></i><span>Hack The Box</span></div>
               <p>BFT is a Blue Team Sherlock focused on NTFS forensic analysis using the Master File Table. The investigation reconstructs a phishing-driven attack chain by identifying the initial ZIP download, extracting Zone.Identifier metadata, locating the executed payload, validating timestamps, calculating the MFT record offset, and extracting the C2 server from resident file data.</p>
               <div class="tag-list">
                 <span class="tag">Blue Team</span>
@@ -466,7 +469,8 @@
           <a class="writeup-card" href="writeups/unit42-htb-very-easy.html" data-team="blue" data-difficulty="very-easy" data-os="windows"
             data-techniques="dfir,threat-hunting,malware-analysis,sysmon,dns-analysis,network-connection,file-creation,time-stomping,initial-access,user-execution,mitre-attack">
             <div class="writeup-card-body">
-              <h3>Unit42 - HTB</h3>
+              <h3>Unit42</h3>
+              <div class="writeup-platform"><i class="bi bi-terminal"></i><span>Hack The Box</span></div>
               <p>Unit42 is a Blue Team Sherlock focused on Sysmon log analysis from a Windows host infected by a malicious file related to a backdoored UltraVNC campaign. The investigation identifies the malicious process, delivery source, timestomping activity, files created on disk, DNS behavior, outbound network connection, and process termination timeline.</p>
               <div class="tag-list">
                 <span class="tag">Blue Team</span>

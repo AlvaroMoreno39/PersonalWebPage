@@ -1,10 +1,10 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>CodePartTwo - HTB | Writeup</title>
+  <title>CodePartTwo | Hack The Box Writeup</title>
   <meta name="description" content="CodePartTwo HTB writeup covering js2py sandbox escape and npbackup-cli escalation.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
 
   <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-  <link href="../assets/css/main.css" rel="stylesheet">
+  <link href="../assets/css/main.css?v=20260507-writeup-platforms" rel="stylesheet">
 </head>
 
 <body>
@@ -26,7 +26,8 @@
           <div class="writeup-detail-header">
             <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
           </div>
-          <h1>CodePartTwo - HTB</h1>
+          <h1>CodePartTwo</h1>
+          <div class="writeup-platform detail"><i class="bi bi-terminal"></i><span>Hack The Box</span></div>
 
         <div class="tag-list">
           <span class="tag">Red Team</span>
@@ -60,8 +61,8 @@
           <pre><code class="language-bash">nmap -sC -sV -p- 10.10.11.82</code></pre>
           <p>Services found:</p>
           <ul>
-            <li>22/tcp â€” SSH</li>
-            <li>8000/tcp â€” HTTP</li>
+            <li>22/tcp — SSH</li>
+            <li>8000/tcp — HTTP</li>
           </ul>
 
           <h2>Web Enumeration</h2>
@@ -134,7 +135,7 @@ SELECT * FROM user;
 .quit</code></pre>
 
           <h2>Lateral Movement</h2>
-          <p>Crack marcoâ€™s hash:</p>
+          <p>Crack marco’s hash:</p>
           <pre><code class="language-bash">john hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt
 john hashes.txt --show</code></pre>
 
@@ -199,6 +200,7 @@ ssh -i id_rsa root@10.10.11.82</code></pre>
 </body>
 
 </html>
+
 
 
 
