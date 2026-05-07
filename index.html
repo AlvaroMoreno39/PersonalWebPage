@@ -41,7 +41,7 @@
     <div class="social-links text-center">
       <a href="https://github.com/AlvaroMoreno39" target="_blank" rel="noopener noreferrer" class="github"
         aria-label="GitHub profile"><i class="bi bi-github"></i></a>
-          <a href="https://www.linkedin.com/in/alvaro-moreno-lumbreras-0bb9ba310/?isSelfProfile=true" target="_blank"
+          <a href="https://www.linkedin.com/in/alvaro-moreno-lumbreras/" target="_blank"
         rel="noopener noreferrer" class="linkedin" aria-label="LinkedIn profile"><i class="bi bi-linkedin"></i></a>
     </div>
 
@@ -218,21 +218,27 @@
       </div>
 
       <div class="container" data-aos="fade-up" data-aos-delay="100">
-        <div class="row g-4 justify-content-center">
-          <div class="col-lg-6 d-flex">
+        <div class="row g-4 portfolio-grid">
+          <div class="col-xl-4 col-md-6">
             <article class="project-card w-100">
               <img src="assets/img/portfolio/gymtrack.png" class="img-fluid rounded mx-auto d-block mb-3"
                 alt="GymTrack Android App screenshot" loading="lazy" decoding="async" width="1200" height="800">
 
               <div class="card-body text-start">
+                <div class="project-meta">Mobile Application</div>
                 <h5 class="card-title">GymTrack - Android App</h5>
                 <p class="card-text">
-                  An Android fitness tracking app built with Kotlin, Jetpack Compose, and Firebase.
-                  Users can create, manage, and track custom workout routines.
-                  The app is open-source and available on Google Play.
+                  Android app for creating workout routines, tracking training sessions, and keeping fitness progress
+                  organized from a clean mobile interface.
                 </p>
 
-                <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+                <div class="project-tags" aria-label="Project technologies">
+                  <span>Kotlin</span>
+                  <span>Jetpack Compose</span>
+                  <span>Firebase</span>
+                </div>
+
+                <div class="project-links">
                   <a href="https://play.google.com/store/apps/details?id=com.alvaromoreno.gymtrack" target="_blank"
                     rel="noopener noreferrer" class="btn btn-outline-primary d-flex align-items-center gap-2">
                     <i class="bi bi-google-play"></i> Google Play
@@ -247,26 +253,27 @@
             </article>
           </div>
 
-          <div class="col-lg-6 d-flex">
+          <div class="col-xl-4 col-md-6">
             <article class="project-card w-100">
               <img src="assets/img/portfolio/finance-tracker.png" class="img-fluid rounded mx-auto d-block mb-3"
                 alt="Personal Finance Tracker screenshot" loading="lazy" decoding="async" width="1200" height="800">
 
               <div class="card-body text-start">
+                <div class="project-meta">Automation Template</div>
                 <h5 class="card-title">Personal Finance Tracker - Google Sheets</h5>
 
                 <p class="card-text">
-                  A dynamic personal finance tracking template built in Google Sheets.
-                  It includes automated balance calculations, filters by year, month, and week,
-                  and dynamic charts to visualize spending and savings.
+                  Google Sheets tracker for organizing income, expenses, savings, and visual summaries with reusable
+                  filters and automated calculations.
                 </p>
 
-                <p class="card-text">
-                  This project was created to practice automation, data organization,
-                  and building practical tools for everyday use.
-                </p>
+                <div class="project-tags" aria-label="Project technologies">
+                  <span>Google Sheets</span>
+                  <span>Automation</span>
+                  <span>Data Tracking</span>
+                </div>
 
-                <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+                <div class="project-links">
                   <a href="https://docs.google.com/spreadsheets/d/1W_1lh_QdPpQjP3OXx-Np8bzInnwm02hqa5zQQ2Y0jDU/edit?usp=sharing"
                     target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary d-flex align-items-center gap-2">
                     <i class="bi bi-link-45deg"></i> View Template
@@ -276,45 +283,33 @@
             </article>
           </div>
 
-          <div class="col-lg-8 d-flex">
+          <div class="col-xl-4 col-md-6">
             <article class="project-card w-100">
               <img src="assets/img/portfolio/web-security-lab.png" class="img-fluid rounded mx-auto d-block mb-3"
                 alt="Web Security Lab screenshot" loading="lazy" decoding="async" width="1200" height="800">
 
               <div class="card-body text-start">
+                <div class="project-meta">Security Learning Lab</div>
                 <h5 class="card-title">Web Security Lab - Secure Coding & Vulnerability Analysis</h5>
 
                 <p class="card-text">
-                  A hands-on learning project to understand why common web vulnerabilities occur, their real-world
-                  impact,
-                  and how to mitigate them properly in a controlled local environment.
+                  Local security lab for studying common web vulnerabilities, exploitation impact, and secure coding
+                  mitigations.
                 </p>
 
-                <p class="card-text mb-2"><strong>Topics covered:</strong></p>
-                <ul class="mb-3 ps-3">
-                  <li>Reflected XSS, Stored XSS, DOM-based XSS</li>
-                  <li>SQL Injection (login and insert)</li>
-                  <li>Secure API usage with prepared statements</li>
-                </ul>
+                <div class="project-tags" aria-label="Project topics">
+                  <span>XSS</span>
+                  <span>SQL Injection</span>
+                  <span>PHP/MySQL</span>
+                  <span>Secure Coding</span>
+                </div>
 
-                <p class="card-text mb-2"><strong>Environment:</strong></p>
-                <ul class="mb-3 ps-3">
-                  <li>Ubuntu Server VM</li>
-                  <li>Apache, PHP, MySQL</li>
-                  <li>Local and controlled setup (educational purposes only)</li>
-                </ul>
-
-                <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+                <div class="project-links">
                   <a href="https://github.com/AlvaroMoreno39/web-security-lab" target="_blank"
                     rel="noopener noreferrer" class="btn btn-outline-primary d-flex align-items-center gap-2">
                     <i class="bi bi-github"></i> GitHub
                   </a>
                 </div>
-
-                <p class="card-text mt-3 text-muted">
-                  Documented learning: where each issue appears, how it can be exploited, its impact, and the correct
-                  mitigation.
-                </p>
               </div>
             </article>
           </div>
@@ -520,49 +515,35 @@
       <div class="container" data-aos="fade-up" data-aos-delay="100">
         <div class="certifications-list">
           <div class="certification-item certification-item-featured">
+            <aside class="certification-proof" aria-label="CJCA certificate preview">
+              <div class="certification-preview">
+                <img src="assets/img/certifications/htb-cjca-certificate.png"
+                  alt="HTB Certified Junior Cybersecurity Associate certificate preview">
+              </div>
+            </aside>
             <div class="certification-content">
               <h3>HTB Certified Junior Cybersecurity Associate (CJCA)</h3>
               <div class="certification-meta-row">
                 <span class="certification-meta-item"><i class="bi bi-shield-check"></i> Hack The Box</span>
                 <span class="certification-meta-item"><i class="bi bi-calendar-check"></i> May 2026</span>
               </div>
-              <p class="certification-summary">Hands-on certification combining offensive and defensive scenarios.</p>
-              <div class="certification-breakdown">
-                <div>
-                  <h4>Offensive</h4>
-                  <ul>
-                    <li>Compromised a mixed environment with Windows, Linux, and web services.</li>
-                    <li>Identified attack paths and performed exploitation.</li>
-                    <li>Documented the full attack chain in a structured report.</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4>Defensive</h4>
-                  <ul>
-                    <li>Investigated security alerts using Elastic/Kibana.</li>
-                    <li>Classified true and false positives based on evidence.</li>
-                    <li>Analyzed logs and supported findings with clear technical reasoning.</li>
-                  </ul>
-                </div>
-              </div>
+              <p class="certification-summary">
+                Hands-on exam combining a practical penetration test against a mixed environment with a structured
+                offensive report, plus a defensive investigation where alerts were analyzed in Elastic/Kibana,
+                classified as true or false positives, and supported with clear evidence.
+              </p>
               <div class="certification-skill-tags" aria-label="Certification skills">
-                <span>Elastic Stack (ELK Stack)</span>
-                <span>Log Analysis</span>
-                <span>Incident Handling</span>
                 <span>Penetration Testing</span>
-                <span>Web Application Security</span>
+                <span>Offensive Reporting</span>
+                <span>Elastic/Kibana</span>
+                <span>Alert Triage</span>
+                <span>Log Analysis</span>
                 <span>Technical Reporting</span>
               </div>
             </div>
-            <aside class="certification-proof" aria-label="CJCA certificate preview">
-              <div class="certification-preview">
-                <img src="assets/img/certifications/htb-cjca-certificate.png"
-                  alt="HTB Certified Junior Cybersecurity Associate certificate preview">
-              </div>
-              <a class="certification-link"
-                href="assets/files/HTB%20Certified%20Junior%20Cybersecurity%20Associate%20-%20certificate.pdf"
-                target="_blank" rel="noopener">View Credential</a>
-            </aside>
+            <a class="certification-link"
+              href="assets/files/HTB%20Certified%20Junior%20Cybersecurity%20Associate%20-%20certificate.pdf"
+              target="_blank" rel="noopener">View Credential</a>
           </div>
         </div>
       </div>
@@ -601,7 +582,7 @@
                 <div>
                   <h3>LinkedIn</h3>
                   <p>
-                    <a href="https://www.linkedin.com/in/alvaro-moreno-lumbreras-0bb9ba310/?isSelfProfile=true" target="_blank"
+                    <a href="https://www.linkedin.com/in/alvaro-moreno-lumbreras/" target="_blank"
                       rel="noopener noreferrer">Alvaro Moreno Lumbreras</a>
                   </p>
                 </div>
