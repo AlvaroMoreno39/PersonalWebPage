@@ -10,3 +10,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Unused writeup source screenshots
+assets/img/ILikeTo/_unused/

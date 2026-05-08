@@ -392,6 +392,79 @@
         <div class="writeups-active-filters" id="writeups-active-filters" aria-live="polite"></div>
         <div class="writeups-counter" id="writeups-counter" aria-live="polite">0 machines</div>
         <div class="writeups-grid">
+          <a class="writeup-card" href="writeups/bft-htb-very-easy.html" data-team="blue" data-difficulty="very-easy" data-os="windows"
+            data-techniques="dfir,incident-response,threat-hunting,digital-forensics,timeline-analysis,mft-analysis,ads-analysis,ioc-extraction,malware-analysis">
+            <div class="writeup-card-body">
+              <h3>BFT</h3>
+              <div class="writeup-platform"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
+              <p>BFT is a Blue Team Sherlock focused on NTFS forensic analysis using the Master File Table. The investigation reconstructs a phishing-driven attack chain by identifying the initial ZIP download, extracting Zone.Identifier metadata, locating the executed payload, validating timestamps, calculating the MFT record offset, and extracting the C2 server from resident file data.</p>
+              <div class="tag-list">
+                <span class="tag">Blue Team</span>
+                <span class="tag">Very Easy</span>
+                <span class="tag">Windows</span>
+                <span class="tag">DFIR</span>
+                <span class="tag">Incident Response</span>
+                <span class="tag">Threat Hunting</span>
+                <span class="tag">Digital Forensics</span>
+                <span class="tag">Timeline Analysis</span>
+                <span class="tag">MFT Analysis</span>
+                <span class="tag">ADS Analysis</span>
+                <span class="tag">IOC Extraction</span>
+                <span class="tag">Malware Analysis</span>
+                <span class="tag">NTFS</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/i-like-to-htb-easy.html" data-team="blue" data-difficulty="easy" data-os="windows"
+            data-techniques="dfir,incident-response,threat-hunting,digital-forensics,timeline-analysis,mft-analysis,ioc-extraction,malware-analysis,log-analysis">
+            <div class="writeup-card-body">
+              <h3>I Like To</h3>
+              <div class="writeup-platform"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
+              <p>I Like To is a Blue Team Sherlock focused on investigating a MOVEit Transfer compromise. The analysis combines IIS web logs, NTFS metadata, Windows Security and Terminal Services event logs, PowerShell history, MOVEit database artifacts, and memory strings to reconstruct the attacker activity.</p>
+              <div class="tag-list">
+                <span class="tag">Blue Team</span>
+                <span class="tag">Easy</span>
+                <span class="tag">Windows</span>
+                <span class="tag">DFIR</span>
+                <span class="tag">Incident Response</span>
+                <span class="tag">Threat Hunting</span>
+                <span class="tag">IIS Logs</span>
+                <span class="tag">MFT Analysis</span>
+                <span class="tag">Event Log Analysis</span>
+                <span class="tag">RDP Analysis</span>
+                <span class="tag">PowerShell History</span>
+                <span class="tag">Memory Analysis</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/unit42-htb-very-easy.html" data-team="blue" data-difficulty="very-easy" data-os="windows"
+            data-techniques="dfir,threat-hunting,malware-analysis,sysmon,dns-analysis,network-connection,file-creation,time-stomping,initial-access,user-execution,mitre-attack">
+            <div class="writeup-card-body">
+              <h3>Unit42</h3>
+              <div class="writeup-platform"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
+              <p>Unit42 is a Blue Team Sherlock focused on Sysmon log analysis from a Windows host infected by a malicious file related to a backdoored UltraVNC campaign. The investigation identifies the malicious process, delivery source, timestomping activity, files created on disk, DNS behavior, outbound network connection, and process termination timeline.</p>
+              <div class="tag-list">
+                <span class="tag">Blue Team</span>
+                <span class="tag">Very Easy</span>
+                <span class="tag">Windows</span>
+                <span class="tag">Sysmon</span>
+                <span class="tag">DFIR</span>
+                <span class="tag">Threat Hunting</span>
+                <span class="tag">Malware Analysis</span>
+                <span class="tag">Initial Access</span>
+                <span class="tag">User Execution</span>
+                <span class="tag">Time Stomping</span>
+                <span class="tag">DNS Analysis</span>
+                <span class="tag">Network Connection</span>
+                <span class="tag">File Creation</span>
+                <span class="tag">UltraVNC</span>
+                <span class="tag">MITRE ATT&amp;CK</span>
+              </div>
+            </div>
+          </a>
+
           <a class="writeup-card" href="writeups/codeparttwo-htb-easy.html" data-team="red" data-difficulty="easy" data-os="linux"
             data-techniques="web,enumeration,credential-harvesting,lateral-movement,privilege-escalation,backup-abuse">
             <div class="writeup-card-body">
@@ -442,55 +515,7 @@
             </div>
           </a>
 
-          <a class="writeup-card" href="writeups/bft-htb-very-easy.html" data-team="blue" data-difficulty="very-easy" data-os="windows"
-            data-techniques="dfir,incident-response,threat-hunting,digital-forensics,timeline-analysis,mft-analysis,ads-analysis,ioc-extraction,malware-analysis">
-            <div class="writeup-card-body">
-              <h3>BFT</h3>
-              <div class="writeup-platform"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
-              <p>BFT is a Blue Team Sherlock focused on NTFS forensic analysis using the Master File Table. The investigation reconstructs a phishing-driven attack chain by identifying the initial ZIP download, extracting Zone.Identifier metadata, locating the executed payload, validating timestamps, calculating the MFT record offset, and extracting the C2 server from resident file data.</p>
-              <div class="tag-list">
-                <span class="tag">Blue Team</span>
-                <span class="tag">Very Easy</span>
-                <span class="tag">Windows</span>
-                <span class="tag">DFIR</span>
-                <span class="tag">Incident Response</span>
-                <span class="tag">Threat Hunting</span>
-                <span class="tag">Digital Forensics</span>
-                <span class="tag">Timeline Analysis</span>
-                <span class="tag">MFT Analysis</span>
-                <span class="tag">ADS Analysis</span>
-                <span class="tag">IOC Extraction</span>
-                <span class="tag">Malware Analysis</span>
-                <span class="tag">NTFS</span>
-              </div>
-            </div>
-          </a>
 
-          <a class="writeup-card" href="writeups/unit42-htb-very-easy.html" data-team="blue" data-difficulty="very-easy" data-os="windows"
-            data-techniques="dfir,threat-hunting,malware-analysis,sysmon,dns-analysis,network-connection,file-creation,time-stomping,initial-access,user-execution,mitre-attack">
-            <div class="writeup-card-body">
-              <h3>Unit42</h3>
-              <div class="writeup-platform"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
-              <p>Unit42 is a Blue Team Sherlock focused on Sysmon log analysis from a Windows host infected by a malicious file related to a backdoored UltraVNC campaign. The investigation identifies the malicious process, delivery source, timestomping activity, files created on disk, DNS behavior, outbound network connection, and process termination timeline.</p>
-              <div class="tag-list">
-                <span class="tag">Blue Team</span>
-                <span class="tag">Very Easy</span>
-                <span class="tag">Windows</span>
-                <span class="tag">Sysmon</span>
-                <span class="tag">DFIR</span>
-                <span class="tag">Threat Hunting</span>
-                <span class="tag">Malware Analysis</span>
-                <span class="tag">Initial Access</span>
-                <span class="tag">User Execution</span>
-                <span class="tag">Time Stomping</span>
-                <span class="tag">DNS Analysis</span>
-                <span class="tag">Network Connection</span>
-                <span class="tag">File Creation</span>
-                <span class="tag">UltraVNC</span>
-                <span class="tag">MITRE ATT&amp;CK</span>
-              </div>
-            </div>
-          </a>
 
           <div class="writeups-empty" id="writeups-empty" aria-live="polite">
             <div class="writeups-empty-visual" aria-hidden="true">
