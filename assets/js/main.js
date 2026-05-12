@@ -846,6 +846,7 @@
 
       toc.appendChild(tocList);
       document.body.appendChild(toc);
+      tocList.classList.add("has-active-indicator");
 
       const tocLinks = Array.from(toc.querySelectorAll("a"));
       let tocScrollTicking = false;
@@ -868,6 +869,19 @@
         refreshHeadingPositions();
       };
 
+      const scrollTocToLink = (link) => {
+        const listRect = tocList.getBoundingClientRect();
+        const linkRect = link.getBoundingClientRect();
+        const currentTop = tocList.scrollTop;
+        const linkCenter = linkRect.top - listRect.top + currentTop + linkRect.height / 2;
+        const targetTop = Math.max(linkCenter - tocList.clientHeight / 2, 0);
+
+        tocList.scrollTo({
+          top: targetTop,
+          behavior: "smooth",
+        });
+      };
+
       const setActiveTocById = (id) => {
         if (!id) return;
         const changed = activeTocId !== id;
@@ -881,8 +895,13 @@
           if (isActive) activeLink = link;
         });
 
+        if (activeLink && activeLink.parentElement) {
+          tocList.style.setProperty("--toc-indicator-top", `${activeLink.parentElement.offsetTop}px`);
+          tocList.style.setProperty("--toc-indicator-height", `${activeLink.parentElement.offsetHeight}px`);
+        }
+
         if (changed && activeLink) {
-          activeLink.scrollIntoView({ block: "nearest", inline: "nearest" });
+          scrollTocToLink(activeLink);
         }
       };
 
@@ -914,35 +933,12 @@
         if (!headingPositions.length) refreshHeadingPositions();
 
         if (tocLockedId) {
-          const lockedHeading = document.getElementById(tocLockedId);
-          if (lockedHeading) {
-            const rect = lockedHeading.getBoundingClientRect();
-            const isStillInView = rect.bottom > topOffset && rect.top < window.innerHeight - 40;
-            if (isStillInView) {
-              setActiveTocById(tocLockedId);
-              return;
-            }
-          }
-          tocLockedId = "";
-        }
-
-        const scrollY = window.scrollY;
-        const docHeight = Math.max(
-          document.body.scrollHeight,
-          document.documentElement.scrollHeight
-        );
-        const maxScroll = Math.max(docHeight - window.innerHeight, 0);
-        const finalHeadingRect = headings[headings.length - 1].getBoundingClientRect();
-        const finalHeadingVisible =
-          finalHeadingRect.top < window.innerHeight - 80 && finalHeadingRect.bottom > topOffset;
-
-        if (maxScroll - scrollY <= 8 || finalHeadingVisible) {
-          setActiveTocById(headings[headings.length - 1].id);
+          setActiveTocById(tocLockedId);
           return;
         }
 
         const activationLine = topOffset + 36;
-        const activationMarker = scrollY + activationLine;
+        const activationMarker = window.scrollY + activationLine;
         let activeIndex = 0;
 
         for (let i = headingPositions.length - 1; i >= 0; i -= 1) {
@@ -962,17 +958,11 @@
           }
         }
 
-        const nearWriteupEnd = maxScroll - scrollY <= window.innerHeight * 0.45;
-
-        // Only near the end, short final sections can be visible without crossing
-        // the normal activation line. Elsewhere, keep the classic scroll-spy feel.
-        if (nearWriteupEnd) {
-          for (let i = headings.length - 1; i >= 0; i -= 1) {
-            const rect = headings[i].getBoundingClientRect();
-            if (rect.top < window.innerHeight - 96 && rect.bottom > topOffset) {
-              activeIndex = Math.max(activeIndex, i);
-              break;
-            }
+        for (let i = activeIndex + 1; i < headings.length; i += 1) {
+          const rect = headings[i].getBoundingClientRect();
+          const entersReadingZone = rect.top <= window.innerHeight * 0.48 && rect.bottom > topOffset;
+          if (entersReadingZone) {
+            activeIndex = i;
           }
         }
 

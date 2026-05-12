@@ -1483,6 +1483,8 @@ section,
 }
 
 .writeup-toc ul {
+  --toc-indicator-top: 0px;
+  --toc-indicator-height: 0px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1491,10 +1493,31 @@ section,
   scrollbar-gutter: stable;
   max-height: calc(100vh - 86px);
   padding-right: 2px;
+  position: relative;
+}
+
+.writeup-toc ul.has-active-indicator::before {
+  content: "";
+  position: absolute;
+  top: var(--toc-indicator-top);
+  left: 0;
+  right: 2px;
+  height: var(--toc-indicator-height);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(15, 118, 110, 0.24);
+  transition: top 0.24s ease, height 0.24s ease, opacity 0.2s ease;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .writeup-toc li + li {
   margin-top: 5px;
+}
+
+.writeup-toc li {
+  position: relative;
+  z-index: 1;
 }
 
 .writeup-toc a {
@@ -1513,7 +1536,7 @@ section,
   overflow-wrap: normal;
   word-break: normal;
   hyphens: none;
-  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .writeup-toc a:hover {
@@ -1523,10 +1546,10 @@ section,
 }
 
 .writeup-toc a.active {
-  background: rgba(15, 118, 110, 0.14);
+  background: transparent;
   color: #0f766e;
   font-weight: 500;
-  border-color: rgba(15, 118, 110, 0.24);
+  border-color: transparent;
   white-space: normal;
   overflow-wrap: normal;
   word-break: normal;
