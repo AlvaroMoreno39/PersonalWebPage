@@ -359,32 +359,33 @@
             <label for="filter-technique">Technique</label>
             <select id="filter-technique">
               <option value="all">All</option>
-              <option value="web">Web</option>
-              <option value="enumeration">Enumeration</option>
-              <option value="credential-harvesting">Credential Harvesting</option>
-              <option value="lateral-movement">Lateral Movement</option>
-              <option value="privilege-escalation">Privilege Escalation</option>
-              <option value="active-directory">Active Directory</option>
-              <option value="dfir">DFIR</option>
-              <option value="incident-response">Incident Response</option>
-              <option value="threat-hunting">Threat Hunting</option>
-              <option value="digital-forensics">Digital Forensics</option>
-              <option value="timeline-analysis">Timeline Analysis</option>
-              <option value="mft-analysis">MFT Analysis</option>
               <option value="ads-analysis">ADS Analysis</option>
-              <option value="ioc-extraction">IOC Extraction</option>
-              <option value="malware-analysis">Malware Analysis</option>
-              <option value="sysmon">Sysmon</option>
-              <option value="dns-analysis">DNS Analysis</option>
-              <option value="network-connection">Network Connection</option>
-              <option value="file-creation">File Creation</option>
-              <option value="time-stomping">Time Stomping</option>
-              <option value="initial-access">Initial Access</option>
-              <option value="user-execution">User Execution</option>
-              <option value="mitre-attack">MITRE ATT&amp;CK</option>
-              <option value="siem">SIEM</option>
-              <option value="log-analysis">Log Analysis</option>
+              <option value="active-directory">Active Directory</option>
               <option value="backup-abuse">Backup Abuse</option>
+              <option value="credential-harvesting">Credential Harvesting</option>
+              <option value="dfir">DFIR</option>
+              <option value="digital-forensics">Digital Forensics</option>
+              <option value="dns-analysis">DNS Analysis</option>
+              <option value="enumeration">Enumeration</option>
+              <option value="file-creation">File Creation</option>
+              <option value="incident-response">Incident Response</option>
+              <option value="initial-access">Initial Access</option>
+              <option value="ioc-extraction">IOC Extraction</option>
+              <option value="lateral-movement">Lateral Movement</option>
+              <option value="log-analysis">Log Analysis</option>
+              <option value="malware-analysis">Malware Analysis</option>
+              <option value="mft-analysis">MFT Analysis</option>
+              <option value="mitre-attack">MITRE ATT&amp;CK</option>
+              <option value="network-connection">Network Connection</option>
+              <option value="privilege-escalation">Privilege Escalation</option>
+              <option value="siem">SIEM</option>
+              <option value="splunk">Splunk</option>
+              <option value="sysmon">Sysmon</option>
+              <option value="threat-hunting">Threat Hunting</option>
+              <option value="time-stomping">Time Stomping</option>
+              <option value="timeline-analysis">Timeline Analysis</option>
+              <option value="user-execution">User Execution</option>
+              <option value="web">Web</option>
             </select>
           </div>
           <button class="filter-reset" type="button" id="filter-reset">Reset</button>
@@ -416,7 +417,7 @@
             </div>
           </a>
 
-          <a class="writeup-card" href="writeups/i-like-to-htb-easy.html" data-team="blue" data-difficulty="easy" data-os="windows"
+          <a class="writeup-card" href="writeups/i-like-to-htb-easy.html" data-team="blue" data-difficulty="easy" data-os="linux,windows"
             data-techniques="dfir,incident-response,threat-hunting,digital-forensics,timeline-analysis,mft-analysis,ioc-extraction,malware-analysis,log-analysis">
             <div class="writeup-card-body">
               <h3>I Like To</h3>
@@ -425,6 +426,7 @@
               <div class="tag-list">
                 <span class="tag">Blue Team</span>
                 <span class="tag">Easy</span>
+                <span class="tag">Linux</span>
                 <span class="tag">Windows</span>
                 <span class="tag">DFIR</span>
                 <span class="tag">Incident Response</span>
@@ -461,6 +463,29 @@
                 <span class="tag">File Creation</span>
                 <span class="tag">UltraVNC</span>
                 <span class="tag">MITRE ATT&amp;CK</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/understanding-log-sources-investigating-with-splunk.html"
+            data-team="blue" data-difficulty="medium" data-os=""
+            data-techniques="splunk,siem,log-analysis,sysmon,incident-response,threat-hunting">
+            <div class="writeup-card-body">
+              <h3>Understanding Log Sources &amp; Investigating with Splunk</h3>
+              <div class="writeup-platform"><i class="bi bi-mortarboard"></i><span>Hack The Box Academy</span></div>
+              <p>Understanding Log Sources &amp; Investigating with Splunk is a Hack The Box Academy module focused on SOC-style investigations with Splunk. The practice covers SPL fundamentals, Kerberos and logon analysis, Sysmon dashboards, LSASS access, C2 network activity, PsExec evidence, and analytics-driven detection.</p>
+              <div class="tag-list">
+                <span class="tag">Blue Team</span>
+                <span class="tag">Medium</span>
+                <span class="tag">Module</span>
+                <span class="tag">Splunk</span>
+                <span class="tag">SIEM</span>
+                <span class="tag">Log Analysis</span>
+                <span class="tag">Sysmon</span>
+                <span class="tag">SPL</span>
+                <span class="tag">Threat Hunting</span>
+                <span class="tag">Incident Investigation</span>
+                <span class="tag">Detection Analytics</span>
               </div>
             </div>
           </a>
@@ -661,7 +686,7 @@
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js" defer></script>
   <script src="assets/vendor/aos/aos.js" defer></script>
   <script src="assets/vendor/typed.js/typed.umd.js" defer></script>
-  <script src="assets/js/main.js?v=20260512-toc-indicator" defer></script>
+  <script src="assets/js/main.js?v=20260513-writeup-count-total" defer></script>
 </body>
 
 </html>

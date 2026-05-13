@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Understanding Log Sources &amp; Investigating with Splunk | Hack The Box Academy Writeup</title>
+  <meta name="description"
+    content="Hack The Box Academy module writeup for Understanding Log Sources and Investigating with Splunk, covering SPL, Sysmon, Kerberos events, LSASS access, C2 investigation, PsExec activity, and analytics-driven detection.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css?v=20260513-splunk-module" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <div class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
+          </div>
+
+          <h1>Understanding Log Sources &amp; Investigating with Splunk</h1>
+          <div class="writeup-platform detail"><i class="bi bi-mortarboard"></i><span>Hack The Box Academy</span></div>
+          <div class="tag-list">
+            <span class="tag">Blue Team</span>
+            <span class="tag">Medium</span>
+            <span class="tag">Module</span>
+            <span class="tag">Splunk</span>
+            <span class="tag">SIEM</span>
+            <span class="tag">SPL</span>
+            <span class="tag">Log Analysis</span>
+            <span class="tag">Sysmon</span>
+            <span class="tag">Kerberos</span>
+            <span class="tag">Threat Hunting</span>
+            <span class="tag">Incident Investigation</span>
+            <span class="tag">Detection Analytics</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            This Hack The Box Academy practice focuses on using Splunk as a SOC investigation platform. The module
+            covers SPL usage, field validation, Sysmon dashboards, LSASS access investigation, C2 callback analysis,
+            PsExec activity, and analytics-driven hunting with statistical thresholds.
+          </p>
+          <p>
+            The goal was to move from raw logs into investigation logic: identify the right event source, build a
+            query, validate fields, pivot into related activity, and explain the evidence clearly.
+          </p>
+
+          <h2>Tools and Log Sources</h2>
+          <ul>
+            <li><strong>Splunk Search &amp; Reporting</strong> for SPL-based investigation.</li>
+            <li><strong>Sysmon App for Splunk</strong> for dashboards and reports.</li>
+            <li><strong>Windows Security logs</strong> for authentication events such as 4624 and 4768.</li>
+            <li><strong>Sysmon logs</strong> for process creation, network connections, image loads, process access, and remote thread creation.</li>
+          </ul>
+
+          <h2>Splunk Fundamentals - Question 1: Kerberos Ticket Requests</h2>
+          <p><strong>Question:</strong> Find the account name with the highest amount of Kerberos authentication ticket requests.</p>
+          <p>Kerberos authentication ticket requests map to Windows Security Event ID 4768.</p>
+          <pre><code class="language-spl">index=* EventCode=4768
+| stats count by Account_Name
+| sort - count
+| head 1</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/01-kerberos-ticket-search.png" alt="Splunk search for Kerberos ticket requests">
+            <figcaption>SPL search for EventCode 4768 grouped by account name.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/02-kerberos-account-result.png" alt="Splunk result showing account with highest Kerberos ticket requests">
+            <figcaption>The result identifies the account with the highest Kerberos ticket request volume.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/03-kerberos-answer-validation.png" alt="Kerberos answer validation in Splunk lab">
+            <figcaption>The answer was validated in the Academy task.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">waldo</code></pre>
+
+          <h2>Splunk Fundamentals - Question 2: SYSTEM Distinct Computers</h2>
+          <p><strong>Question:</strong> Find the count of distinct computers accessed by the account name <code>SYSTEM</code> through 4624 events.</p>
+          <pre><code class="language-spl">index="main" EventCode=4624
+| stats dc(ComputerName) as unique_workstations by Account_Name</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/04-system-distinct-computers.png" alt="Splunk distinct computer count for SYSTEM account">
+            <figcaption>Distinct computer count for successful logons grouped by account name.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">10</code></pre>
+
+          <h2>Splunk Fundamentals - Question 3: Short Login Window</h2>
+          <p>
+            <strong>Question:</strong> Identify accounts whose total login activity occurred within a time range of
+            less than 10 minutes, then return the account with the highest login attempts.
+          </p>
+          <pre><code class="language-spl">index=* EventCode=4624
+| stats count as login_attempts earliest(_time) as first_login latest(_time) as last_login by Account_Name
+| eval duration_seconds=last_login-first_login
+| where duration_seconds &lt; 600
+| sort - login_attempts
+| head 1</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/05-short-login-window-question.png" alt="Splunk task for accounts with high login activity in a short window">
+            <figcaption>The task focuses on bursty successful login activity.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">aparsa</code></pre>
+
+          <h2>Using Splunk Applications - Setup: Sysmon Macro Fix</h2>
+          <p>
+            The Sysmon App for Splunk required a macro adjustment before dashboards and reports returned events. The
+            correct macro definition pointed the app to the right index and sourcetype.
+          </p>
+          <p>The first step was downloading the Sysmon App for Splunk from Splunkbase and installing it into the lab instance.</p>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/13-splunkbase-sysmon-app-download.png" alt="Splunkbase page for downloading the Sysmon App for Splunk">
+            <figcaption>The Sysmon App for Splunk was downloaded from Splunkbase.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/14-splunk-manage-apps.png" alt="Splunk Manage Apps page">
+            <figcaption>From Splunk, I opened the Manage Apps page.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/15-install-app-from-file.png" alt="Splunk Install app from file option">
+            <figcaption>The app was installed using the Install app from file option.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/16-browse-sysmon-app-package.png" alt="Browsing for the Sysmon App package">
+            <figcaption>I browsed for the downloaded Sysmon App package.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/17-select-sysmon-app-package.png" alt="Selecting the Sysmon App package">
+            <figcaption>The Sysmon App archive was selected for upload.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/18-upload-sysmon-app-package.png" alt="Uploading the Sysmon App package">
+            <figcaption>The package was uploaded into Splunk.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/19-splunk-restart-after-upload.png" alt="Splunk restart prompt after app upload">
+            <figcaption>Splunk prompted for a restart after installing the app.</figcaption>
+          </figure>
+          <p>After installation, the app still needed its macro adjusted so it could find the Sysmon logs.</p>
+          <pre><code class="language-spl">index="main" sourcetype="WinEventLog:Sysmon"</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/06-sysmon-macro-settings.png" alt="Sysmon App for Splunk macro settings">
+            <figcaption>Macro settings in the Sysmon App for Splunk.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/07-sysmon-macro-edit.png" alt="Editing Sysmon macro definition in Splunk">
+            <figcaption>The macro definition was adjusted so Sysmon events loaded correctly.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/20-select-sysmon-macro.png" alt="Selecting the sysmon macro in Splunk">
+            <figcaption>The <code>sysmon</code> macro was selected for editing.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/21-save-sysmon-macro-definition.png" alt="Saving the corrected sysmon macro definition">
+            <figcaption>The corrected macro definition was saved.</figcaption>
+          </figure>
+
+          <h2>Using Splunk Applications - Question 1: Net View Report</h2>
+          <p><strong>Question:</strong> Fix the <code>Net - net view</code> report and provide the complete executed command.</p>
+          <p>After fixing the macro, I opened the Sysmon App for Splunk and went to the Reports tab.</p>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/22-open-sysmon-app.png" alt="Opening the Sysmon App for Splunk">
+            <figcaption>The Sysmon App for Splunk was opened after installation.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/23-sysmon-reports-net-view.png" alt="Net View report in the Sysmon App reports tab">
+            <figcaption>The <code>Net - net view</code> report was identified in the Reports tab.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/24-open-net-view-in-search.png" alt="Opening the Net View report in Splunk Search">
+            <figcaption>The report was opened in Search to inspect and fix the SPL.</figcaption>
+          </figure>
+          <p>The original report returned no events because it referenced incorrect fields.</p>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/25-net-view-query-no-events.png" alt="Broken Net View query returning no events">
+            <figcaption>The initial query returned no events.</figcaption>
+          </figure>
+          <p>I changed the time range to All time and corrected the field usage.</p>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/26-net-view-all-time.png" alt="Net View report search set to All time">
+            <figcaption>The search was moved to All time to include the lab data.</figcaption>
+          </figure>
+          <pre><code class="language-spl">`sysmon` Image="*net.exe" (CommandLine="net  view*")
+| stats count by ComputerName,CommandLine</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/27-net-view-command-result.png" alt="Net View report command result">
+            <figcaption>The corrected query exposed the executed <code>net view</code> command.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">net view /DOMAIN:uniwaldo.local</code></pre>
+
+          <h2>Using Splunk Applications - Question 2: SharpHound Network Connections</h2>
+          <p><strong>Question:</strong> Provide the number of connections initiated by <code>SharpHound.exe</code>.</p>
+          <p>
+            Sysmon Event ID 3 records network connections. Before fixing the dashboard search, I inspected actual
+            Sysmon network events to confirm the available field names.
+          </p>
+          <pre><code class="language-spl">`sysmon` EventCode=3 Image="*"</code></pre>
+          <p>The useful fields were <code>EventCode</code>, <code>Image</code>, and <code>ComputerName</code>. The corrected search counted only SharpHound network connection events.</p>
+          <pre><code class="language-spl">`sysmon` EventCode=3 Image="*SharpHound.exe"
+| stats count</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">6</code></pre>
+
+          <h2>Intrusion Detection - Question 1: Other LSASS Dumping Process</h2>
+          <p><strong>Question:</strong> Find the other process that dumped LSASS.</p>
+          <p>
+            Sysmon Event ID 10 records process access. This is important for credential dumping investigations because
+            tools often open a handle to <code>lsass.exe</code>.
+          </p>
+          <pre><code class="language-spl">index="main" EventCode=10 lsass
+| stats count by SourceImage</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/28-lsass-sourceimage-results.png" alt="Splunk SourceImage results for LSASS process access">
+            <figcaption>The statistics table showed which processes accessed LSASS.</figcaption>
+          </figure>
+          <p>
+            The lesson already investigated <code>notepad.exe</code>, so the other suspicious process was
+            <code>rundll32.exe</code>.
+          </p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">rundll32.exe</code></pre>
+
+          <h2>Intrusion Detection - Question 2: Misused DLL</h2>
+          <p><strong>Question:</strong> Find the method used by the other process to dump LSASS. Enter the misused DLL.</p>
+          <pre><code class="language-spl">index="main" rundll32 lsass
+| table _time, host, Image, CommandLine, ParentImage</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/29-rundll32-comsvcs-commandline.png" alt="Splunk command line showing rundll32 using comsvcs.dll MiniDump">
+            <figcaption>The <code>CommandLine</code> field exposed the LSASS dump method.</figcaption>
+          </figure>
+          <p>The command line exposed <code>comsvcs.dll MiniDump</code>, a known LSASS dump technique.</p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">comsvcs.dll</code></pre>
+
+          <h2>Intrusion Detection - Question 3: Suspicious CLR Loads</h2>
+          <p>
+            <strong>Question:</strong> Find suspicious loads of <code>clr.dll</code> that could indicate C# injection
+            or execute-assembly activity, then identify the process used to temporarily execute code.
+          </p>
+          <pre><code class="language-spl">index="main" EventCode=7 ImageLoaded="*clr.dll"
+| stats count by Image</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/31-clr-load-suspicious-processes.png" alt="Splunk results for suspicious clr.dll image loads">
+            <figcaption>Suspicious processes loading <code>clr.dll</code> can indicate .NET or C# execution.</figcaption>
+          </figure>
+          <pre><code class="language-spl">index="main" EventCode=1 Image="*rundll32.exe"
+| stats count by ParentImage, Image</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/30-rundll32-parent-processes.png" alt="Splunk parent process results for rundll32 execution">
+            <figcaption>Process creation data showed suspicious parents launching <code>rundll32.exe</code>.</figcaption>
+          </figure>
+          <p>
+            Combining the <code>clr.dll</code> loads, suspicious parent processes, and <code>rundll32.exe</code>
+            execution showed that <code>rundll32.exe</code> was being used as a temporary execution host.
+          </p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">rundll32.exe</code></pre>
+
+          <h2>Intrusion Detection - Question 4: C2 Callback IPs</h2>
+          <p><strong>Question:</strong> Find the two IP addresses of the C2 callback server.</p>
+          <p>I focused the search on Sysmon network connections created by processes already seen in the suspicious execution chain.</p>
+          <pre><code class="language-spl">index="main" sourcetype="WinEventLog:Sysmon" EventCode=3 (Image="*powershell.exe" OR Image="*rundll32.exe" OR Image="*randomfile.exe")
+| stats count by DestinationIp, Image</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/08-c2-destination-ip-results.png" alt="Splunk results for suspicious C2 destination IPs">
+            <figcaption>Filtering suspicious processes helped identify likely C2 callback IPs.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">10.0.0.186 and 10.0.0.91</code></pre>
+
+          <h2>Intrusion Detection - Question 5: C2 Callback Port</h2>
+          <p><strong>Question:</strong> Find the port used by one of the two C2 callback server IPs.</p>
+          <pre><code class="language-spl">index="main" sourcetype="WinEventLog:Sysmon" EventCode=3
+(SourceIp="10.0.0.91" OR SourceIp="10.0.0.186")
+| table _time, Image, SourceIp, SourcePort, DestinationIp, DestinationPort</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/09-c2-port-investigation.png" alt="Splunk investigation for C2 callback port">
+            <figcaption>Network connection details were reviewed to identify the C2 callback port.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">3389</code></pre>
+
+          <h2>Detecting Attacker Behavior With TTPs - Question 1: PsExec Password</h2>
+          <p><strong>Question:</strong> Find the password used during PsExec activity.</p>
+          <pre><code class="language-spl">index="main" sourcetype="WinEventLog:Sysmon" EventCode=1 psexec
+| table _time ComputerName User Image CommandLine ParentImage ParentCommandLine</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/10-psexec-password-commandline.png" alt="Splunk PsExec command line showing password">
+            <figcaption>The <code>-p</code> argument in the PsExec command line exposed the password.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Password@123</code></pre>
+
+          <h2>Analytics-Driven Detection - Question 1: Remote Thread Outlier</h2>
+          <p>
+            <strong>Question:</strong> Find the source process image creating an unusually high number of threads in
+            other processes, greater than two standard deviations above average.
+          </p>
+          <pre><code class="language-spl">index=* EventCode=8
+| stats count as injected_threads by SourceImage
+| eventstats avg(injected_threads) as avg stdev(injected_threads) as stdev
+| eval threshold=avg+(2*stdev)
+| where injected_threads &gt; threshold</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/11-create-remote-thread-outlier.png" alt="Splunk analytics query showing CreateRemoteThread outlier">
+            <figcaption>The statistical threshold identified the outlier process creating remote threads.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">randomfile.exe</code></pre>
+
+          <h2>Skills Assessment - Question 1: Process Injecting into rundll32</h2>
+          <p><strong>Question:</strong> Find the process that created remote threads in <code>rundll32.exe</code>.</p>
+          <pre><code class="language-spl">index=* EventCode=8 TargetImage="*rundll32.exe"
+| table SourceImage TargetImage</code></pre>
+          <figure>
+            <img src="../assets/img/SplunkLogSources/12-rundll32-remote-thread-source.png" alt="Splunk result showing process injecting into rundll32.exe">
+            <figcaption>The source process creating remote threads into <code>rundll32.exe</code> was visible in Sysmon Event ID 8.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">randomfile.exe</code></pre>
+
+          <h2>Skills Assessment - Question 2: Process That Started the Infection</h2>
+          <p>
+            <strong>Question:</strong> Find through SPL searches against all data the process that started the
+            infection.
+          </p>
+          <p>
+            The investigation starts from Sysmon Event ID 10, which records process access. Credential dumping tools
+            often access <code>lsass.exe</code>, so searching for processes interacting with LSASS gives a strong pivot
+            point into the infection chain.
+          </p>
+          <pre><code class="language-spl">index="main" EventCode=10 lsass
+| stats count by SourceImage</code></pre>
+          <p>The search filters for LSASS-related process access events and summarizes them by source process.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>SourceImage</th>
+                <th>Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>csrss.exe</code></td>
+                <td>59</td>
+              </tr>
+              <tr>
+                <td><code>wininit.exe</code></td>
+                <td>59</td>
+              </tr>
+              <tr>
+                <td><code>msiexec.exe</code></td>
+                <td>99</td>
+              </tr>
+              <tr>
+                <td><code>notepad.exe</code></td>
+                <td>1</td>
+              </tr>
+              <tr>
+                <td><code>rundll32.exe</code></td>
+                <td>4</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            Common Windows processes such as <code>csrss.exe</code>, <code>wininit.exe</code>, and
+            <code>msiexec.exe</code> can appear in LSASS-related activity. The suspicious entries are
+            <code>notepad.exe</code> and <code>rundll32.exe</code>. Since the lesson already investigated
+            <code>notepad.exe</code>, the other suspicious process and infection pivot is <code>rundll32.exe</code>.
+          </p>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">rundll32.exe</code></pre>
+
+          <h2>Key Takeaways</h2>
+          <ul>
+            <li>SPL investigations start with selecting the right event source and validating available fields.</li>
+            <li>Windows Event IDs such as 4768 and 4624 are useful for authentication analysis.</li>
+            <li>Sysmon Event IDs 1, 3, 7, 8, and 10 provide visibility into execution, networking, image loads, injection, and process access.</li>
+            <li>Dashboards and reports can fail when macros or field names are wrong, so field validation matters.</li>
+            <li>Analytics-driven searches help identify outliers such as abnormal remote thread creation.</li>
+          </ul>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js" defer></script>
+  <script src="../assets/js/main.js?v=20260513-writeup-count-total" defer></script>
+</body>
+
+</html>

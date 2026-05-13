@@ -550,13 +550,13 @@
       writeupCards.forEach((card) => {
         const cardTeam = (card.dataset.team || "").toLowerCase();
         const cardDifficulty = (card.dataset.difficulty || "").toLowerCase();
-        const cardOs = (card.dataset.os || "").toLowerCase();
+        const cardOs = normalizeList(card.dataset.os || "");
         const cardTechniques = normalizeList(card.dataset.techniques || "");
         const cardText = (card.textContent || "").toLowerCase();
 
         const matchesTeam = team === "all" || cardTeam === team;
         const matchesDifficulty = difficulty === "all" || cardDifficulty === difficulty;
-        const matchesOs = os === "all" || cardOs === os;
+        const matchesOs = os === "all" || cardOs.includes(os);
         const matchesTechnique =
           selectedTechniques.size === 0 ||
           Array.from(selectedTechniques).every((technique) => cardTechniques.includes(technique));
@@ -624,8 +624,9 @@
       }
 
       if (counterNode) {
-        const label = visibleTarget === 1 ? "machine" : "machines";
-        counterNode.textContent = `${visibleTarget} ${label}`;
+        const totalMatches = matchedCards.length;
+        const label = totalMatches === 1 ? "machine" : "machines";
+        counterNode.textContent = `${totalMatches} ${label}`;
       }
 
       if (pageInfo) {
