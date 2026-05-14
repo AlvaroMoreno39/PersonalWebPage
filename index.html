@@ -363,9 +363,12 @@
               <option value="active-directory">Active Directory</option>
               <option value="backup-abuse">Backup Abuse</option>
               <option value="credential-harvesting">Credential Harvesting</option>
+              <option value="cyberchef">CyberChef</option>
+              <option value="data-exfiltration">Data Exfiltration</option>
               <option value="dfir">DFIR</option>
               <option value="digital-forensics">Digital Forensics</option>
               <option value="dns-analysis">DNS Analysis</option>
+              <option value="dns-tunneling">DNS Tunneling</option>
               <option value="enumeration">Enumeration</option>
               <option value="file-creation">File Creation</option>
               <option value="incident-response">Incident Response</option>
@@ -377,6 +380,8 @@
               <option value="mft-analysis">MFT Analysis</option>
               <option value="mitre-attack">MITRE ATT&amp;CK</option>
               <option value="network-connection">Network Connection</option>
+              <option value="network-forensics">Network Forensics</option>
+              <option value="pcap-analysis">PCAP Analysis</option>
               <option value="privilege-escalation">Privilege Escalation</option>
               <option value="siem">SIEM</option>
               <option value="splunk">Splunk</option>
@@ -386,6 +391,7 @@
               <option value="timeline-analysis">Timeline Analysis</option>
               <option value="user-execution">User Execution</option>
               <option value="web">Web</option>
+              <option value="wireshark">Wireshark</option>
             </select>
           </div>
           <button class="filter-reset" type="button" id="filter-reset">Reset</button>
@@ -437,6 +443,30 @@
                 <span class="tag">RDP Analysis</span>
                 <span class="tag">PowerShell History</span>
                 <span class="tag">Memory Analysis</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/litter-htb-easy.html" data-team="blue" data-difficulty="easy" data-os="linux"
+            data-techniques="dfir,incident-response,threat-hunting,network-forensics,pcap-analysis,wireshark,dns-analysis,dns-tunneling,data-exfiltration,cyberchef,ioc-extraction">
+            <div class="writeup-card-body">
+              <h3>Litter</h3>
+              <div class="writeup-platform"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
+              <p>Litter is a Blue Team Sherlock focused on suspicious DNS traffic inside a packet capture. The investigation identifies DNS tunneling activity, pivots through high-volume UDP conversations, decodes hidden command data with CyberChef, confirms dnscat2 usage, and reconstructs PII data exfiltration.</p>
+              <div class="tag-list">
+                <span class="tag">Blue Team</span>
+                <span class="tag">Easy</span>
+                <span class="tag">Linux</span>
+                <span class="tag">DFIR</span>
+                <span class="tag">Incident Response</span>
+                <span class="tag">Threat Hunting</span>
+                <span class="tag">Network Forensics</span>
+                <span class="tag">PCAP Analysis</span>
+                <span class="tag">Wireshark</span>
+                <span class="tag">DNS Analysis</span>
+                <span class="tag">DNS Tunneling</span>
+                <span class="tag">Data Exfiltration</span>
+                <span class="tag">CyberChef</span>
               </div>
             </div>
           </a>
@@ -686,7 +716,7 @@
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js" defer></script>
   <script src="assets/vendor/aos/aos.js" defer></script>
   <script src="assets/vendor/typed.js/typed.umd.js" defer></script>
-  <script src="assets/js/main.js?v=20260513-writeup-count-total" defer></script>
+  <script src="assets/js/main.js?v=20260514-writeup-toc-bottom" defer></script>
 </body>
 
 </html>

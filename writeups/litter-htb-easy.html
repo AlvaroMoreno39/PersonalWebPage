@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Litter | Hack The Box Writeup</title>
+  <meta name="description"
+    content="Litter HTB Sherlock writeup covering DNS tunneling, PCAP analysis, Wireshark conversations, CyberChef decoding, dnscat2 activity, and PII data exfiltration.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css?v=20260512-toc-indicator" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <div class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
+          </div>
+
+          <h1>Litter</h1>
+          <div class="writeup-platform detail"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
+          <div class="tag-list">
+            <span class="tag">Blue Team</span>
+            <span class="tag">Easy</span>
+            <span class="tag">Linux</span>
+            <span class="tag">DFIR</span>
+            <span class="tag">Incident Response</span>
+            <span class="tag">Threat Hunting</span>
+            <span class="tag">Network Forensics</span>
+            <span class="tag">PCAP Analysis</span>
+            <span class="tag">Wireshark</span>
+            <span class="tag">DNS Analysis</span>
+            <span class="tag">DNS Tunneling</span>
+            <span class="tag">Data Exfiltration</span>
+            <span class="tag">CyberChef</span>
+            <span class="tag">IOC Extraction</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            Litter is a Blue Team Sherlock focused on investigating suspicious DNS traffic inside a packet capture.
+            The analysis identifies DNS as the abused protocol, pivots into heavy UDP conversations, decodes hidden
+            command activity with CyberChef, confirms dnscat2 usage, and reconstructs how the attacker enumerated cloud
+            storage and stole a PII CSV file.
+          </p>
+
+          <h2>Evidence and Tools</h2>
+          <p>The investigation was based on packet capture analysis and stream decoding.</p>
+          <ul>
+            <li><strong>Wireshark</strong> for protocol hierarchy, conversations, and UDP stream analysis.</li>
+            <li><strong>CyberChef</strong> for decoding hex-encoded DNS tunnel content.</li>
+            <li><strong>strings</strong>, <strong>grep</strong>, <strong>sort</strong>, and <strong>uniq</strong> for extracting record IDs from decoded output.</li>
+          </ul>
+
+          <h2>Task 1 - Suspect Protocol</h2>
+          <p><strong>Question:</strong> At a glance, what protocol seems to be suspect in this attack?</p>
+          <p>
+            I started with a protocol overview instead of reading every packet manually. In Wireshark, I opened
+            <code>Statistics &gt; Protocol Hierarchy</code> and looked for unusually high-volume protocols.
+          </p>
+          <pre><code class="language-text">Statistics &gt; Protocol Hierarchy</code></pre>
+          <p>
+            DNS immediately stood out with a large amount of traffic. DNS is normally a support protocol, so this amount
+            of DNS traffic in a data theft scenario suggested tunneling, exfiltration, beaconing, or command-and-control.
+          </p>
+          <figure>
+            <img src="../assets/img/Litter/01-protocol-hierarchy-dns-volume.png" alt="Wireshark protocol hierarchy showing high DNS volume">
+            <figcaption>DNS represented a suspicious amount of the traffic in the capture.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">DNS</code></pre>
+
+          <h2>Task 2 - Suspect Host</h2>
+          <p><strong>Question:</strong> There seems to be a lot of traffic between our host and another. What is the IP address of the suspect host?</p>
+          <p>
+            Because DNS was the suspect protocol, I checked UDP conversations in Wireshark through
+            <code>Statistics &gt; Conversations &gt; UDP</code>. The largest UDP conversation was between the local host and
+            another system using port <code>53</code>.
+          </p>
+          <pre><code class="language-text">192.168.157.144:64377 -&gt; 192.168.157.145:53</code></pre>
+          <p>
+            Since <code>192.168.157.144</code> appeared to be the compromised host, the other side of the heavy DNS
+            traffic was the suspect host.
+          </p>
+          <figure>
+            <img src="../assets/img/Litter/02-udp-conversations-suspect-host.png" alt="Wireshark UDP conversations showing the suspect host">
+            <figcaption>The largest UDP conversation pointed to the DNS server involved in the suspicious activity.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">192.168.157.145</code></pre>
+
+          <h2>Task 3 - First Attacker Command</h2>
+          <p><strong>Question:</strong> What is the first command the attacker sends to the client?</p>
+          <p>
+            I followed the suspicious DNS/UDP stream between <code>192.168.157.144</code> and
+            <code>192.168.157.145</code>, copied the stream content, and decoded the hidden data in CyberChef using
+            <code>From Hex</code>.
+          </p>
+          <pre><code class="language-text">Follow UDP Stream
+Copy stream content
+CyberChef: From Hex</code></pre>
+          <figure>
+            <img src="../assets/img/Litter/03-cyberchef-hex-decoding-preview.png" alt="CyberChef decoding a hex encoded DNS tunnel stream">
+            <figcaption>CyberChef was used to turn the encoded stream into readable command activity.</figcaption>
+          </figure>
+          <p>
+            The decoded output showed shell activity. The first real command sent by the attacker was
+            <code>whoami</code>, followed by the host response.
+          </p>
+          <figure>
+            <img src="../assets/img/Litter/04-first-command-whoami.png" alt="Decoded stream showing the whoami command">
+            <figcaption>The decoded stream exposed the first attacker command.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">whoami</code></pre>
+
+          <h2>Task 4 - DNS Tunneling Tool Version</h2>
+          <p><strong>Question:</strong> What is the version of the DNS tunneling tool the attacker is using?</p>
+          <p>
+            I reused the decoded DNS stream from the previous task and searched for <code>dnscat</code>. The decoded data
+            contained the tool name and version string.
+          </p>
+          <pre><code class="language-text">dnscat2-v0.07-client</code></pre>
+          <figure>
+            <img src="../assets/img/Litter/05-dnscat-version-string.png" alt="Decoded stream showing the dnscat2 version string">
+            <figcaption>The decoded stream identified the DNS tunneling tool version.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">v0.07</code></pre>
+
+          <h2>Task 5 - Renamed Tool</h2>
+          <p><strong>Question:</strong> The attackers attempt to rename the tool they accidentally left on the client's host. What do they name it to?</p>
+          <p>
+            I followed the longest UDP stream, stream <code>481</code>, copied the full content into CyberChef, decoded it
+            with <code>From Hex</code>, and searched for the Windows rename command <code>ren</code>.
+          </p>
+          <figure>
+            <img src="../assets/img/Litter/06-follow-udp-stream-481.png" alt="Wireshark following the longest UDP stream">
+            <figcaption>The longest UDP stream contained the most useful decoded command activity.</figcaption>
+          </figure>
+          <p>The decoded shell activity showed the attacker renaming the dnscat2 client binary.</p>
+          <pre><code class="language-text">dnscat2-v0.07-client-win32.exe -&gt; win_installer.exe</code></pre>
+          <figure>
+            <img src="../assets/img/Litter/07-renamed-dnscat-tool.png" alt="Decoded stream showing the renamed dnscat2 tool">
+            <figcaption>The attacker attempted to make the tool look like an installer.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">win_installer.exe</code></pre>
+
+          <h2>Task 6 - Cloud Storage File Count</h2>
+          <p><strong>Question:</strong> The attacker attempts to enumerate the user's cloud storage. How many files do they locate in their cloud storage directory?</p>
+          <p>
+            I searched the decoded DNS stream for cloud storage paths and found references to
+            <code>C:\Users\test\OneDrive</code>. The attacker ran a directory listing command inside that folder.
+          </p>
+          <p>The command output showed <code>0 File(s)</code>, meaning the OneDrive directory did not contain files.</p>
+          <figure>
+            <img src="../assets/img/Litter/08-onedrive-directory-listing.png" alt="Decoded stream showing OneDrive directory listing">
+            <figcaption>The OneDrive directory listing showed no files.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">0</code></pre>
+
+          <h2>Task 7 - Stolen PII File Location</h2>
+          <p><strong>Question:</strong> What is the full location of the PII file that was stolen?</p>
+          <p>
+            I searched the decoded stream for commands that read file contents, especially the Windows
+            <code>type</code> command. The attacker used it on a CSV file under the user's Documents folder.
+          </p>
+          <p>
+            The output contained PII-related fields such as <code>ssn</code>, <code>name</code>, <code>address</code>,
+            <code>mail</code>, and <code>birthdate</code>, confirming it was the stolen file.
+          </p>
+          <figure>
+            <img src="../assets/img/Litter/09-stolen-pii-file-path.png" alt="Decoded stream showing the stolen PII file path">
+            <figcaption>The decoded command output exposed the full path of the stolen CSV file.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">C:\Users\test\Documents\client data optimisation\user details.csv</code></pre>
+
+          <h2>Task 8 - Number of Stolen PII Records</h2>
+          <p><strong>Question:</strong> Exactly how many customer PII records were stolen?</p>
+          <p>
+            I saved the decoded CyberChef output to a text file. Because the CSV output was noisy and partially
+            duplicated, I extracted readable strings and searched for numeric record IDs used in the CSV.
+          </p>
+          <pre><code class="language-bash">strings -a decoded_stream.txt &gt; clean_strings.txt</code></pre>
+          <pre><code class="language-bash">grep -aoE '(^|[^0-9])[0-9]{1,4},[A-Z][A-Za-z ]+,' clean_strings.txt | grep -aoE '[0-9]{1,4}' | sort -n | uniq &gt; ids.txt</code></pre>
+          <p>
+            The records were indexed starting from <code>0</code>, and the highest ID found was <code>720</code>. That means the
+            total number of records was <code>720 - 0 + 1</code>.
+          </p>
+          <figure>
+            <img src="../assets/img/Litter/10-pii-record-count.png" alt="Terminal output showing extracted PII record IDs">
+            <figcaption>The highest record ID was 720, so the total count was 721.</figcaption>
+          </figure>
+          <pre><code class="language-text">720 + 1 = 721</code></pre>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">721</code></pre>
+
+          <h2>Attack Chain</h2>
+          <pre><code class="language-text">1. DNS traffic stands out in the capture
+2. Heavy UDP conversation identifies the suspect host
+3. DNS tunnel content is decoded from hex
+4. dnscat2 activity is confirmed
+5. Attacker renames the tunneling client
+6. OneDrive is enumerated
+7. PII CSV is read from Documents
+8. 721 customer records are confirmed stolen</code></pre>
+
+          <h2>Key Takeaways</h2>
+          <ul>
+            <li>Protocol hierarchy is a fast way to identify suspicious traffic volume.</li>
+            <li>DNS tunneling can hide interactive command activity inside normal-looking DNS traffic.</li>
+            <li>Following high-volume UDP streams can reveal the attacker command channel.</li>
+            <li>CyberChef is useful for quickly decoding encoded stream content during network investigations.</li>
+            <li>Counting extracted record IDs can validate the scope of stolen data.</li>
+          </ul>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js" defer></script>
+  <script src="../assets/js/main.js?v=20260514-writeup-toc-bottom" defer></script>
+</body>
+
+</html>

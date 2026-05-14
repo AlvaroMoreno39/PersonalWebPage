@@ -938,6 +938,20 @@
           return;
         }
 
+        const viewportBottom = window.scrollY + window.innerHeight;
+        const documentHeight = Math.max(
+          document.body.scrollHeight,
+          document.documentElement.scrollHeight
+        );
+        const detailBottom = detailBox.getBoundingClientRect().bottom + window.scrollY;
+        const reachedWriteupEnd =
+          viewportBottom >= Math.min(documentHeight, detailBottom) - 12;
+
+        if (reachedWriteupEnd) {
+          setActiveTocById(headings[headings.length - 1].id);
+          return;
+        }
+
         const activationLine = topOffset + 36;
         const activationMarker = window.scrollY + activationLine;
         let activeIndex = 0;
