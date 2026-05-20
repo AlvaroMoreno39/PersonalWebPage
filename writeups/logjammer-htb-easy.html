@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>LogJammer | Hack The Box Writeup</title>
+  <meta name="description"
+    content="LogJammer HTB Sherlock writeup covering Windows Event Logs, EVTX analysis, firewall tampering, audit policy changes, scheduled tasks, Windows Defender detections, PowerShell logging, and log clearing.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css?v=20260512-toc-indicator" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <div class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
+          </div>
+
+          <h1>LogJammer</h1>
+          <div class="writeup-platform detail"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
+          <div class="tag-list">
+            <span class="tag">Blue Team</span>
+            <span class="tag">Easy</span>
+            <span class="tag">Windows</span>
+            <span class="tag">DFIR</span>
+            <span class="tag">Incident Response</span>
+            <span class="tag">Threat Hunting</span>
+            <span class="tag">Windows Event Logs</span>
+            <span class="tag">EVTX</span>
+            <span class="tag">Event Log Analysis</span>
+            <span class="tag">Windows Defender</span>
+            <span class="tag">Firewall Analysis</span>
+            <span class="tag">Audit Policy</span>
+            <span class="tag">Scheduled Tasks</span>
+            <span class="tag">PowerShell Logging</span>
+            <span class="tag">Log Clearing</span>
+            <span class="tag">SharpHound</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            LogJammer is a Blue Team Sherlock focused on Windows event log analysis. The investigation follows a
+            suspicious user, <code>CyberJunkie</code>, through successful logon activity, firewall tampering, audit
+            policy modification, scheduled task creation, Microsoft Defender detections, PowerShell execution, and log
+            clearing. The goal is to reconstruct the activity from EVTX evidence and identify the key artifacts left by
+            the user.
+          </p>
+
+          <h2>Evidence and Tools</h2>
+          <p>The provided Windows event logs were parsed with Eric Zimmerman's <strong>EvtxECmd</strong> and reviewed in <strong>Timeline Explorer</strong>.</p>
+          <pre><code class="language-powershell">C:\Users\moree39\Desktop\Tools\Get-ZimmermanTools-master\net9\EvtxeCmd\EvtxECmd.exe -d "C:\Users\moree39\Downloads\Event-Logs" --csv "C:\Users\moree39\Downloads\EventLogs-CSV"</code></pre>
+          <p>The parser generated a CSV file that could be filtered by Event ID, timestamp, and payload fields.</p>
+          <pre><code class="language-text">C:\Users\moree39\Downloads\EventLogs-CSV\20260519174821_EvtxECmd_Output.csv</code></pre>
+          <figure>
+            <img src="../assets/img/LogJammer/01-evtxecmd-output-file.png" alt="EvtxECmd output CSV generated from Windows event logs">
+            <figcaption>EvtxECmd converted the EVTX files into a CSV for easier analysis.</figcaption>
+          </figure>
+
+          <h2>Task 1 - First Successful Logon</h2>
+          <p><strong>Question:</strong> When did the <code>cyberjunkie</code> user first successfully log into his computer? (UTC)</p>
+          <p>
+            Successful user logons are recorded in the Security log with <code>Event ID 4624</code>. I filtered the parsed
+            CSV for successful logon events where the payload referenced <code>cyberjunkie</code>, then sorted by the
+            <strong>Time Created</strong> column.
+          </p>
+          <pre><code class="language-text">Event Id = 4624
+Payload Data1 contains cyberjunkie</code></pre>
+          <figure>
+            <img src="../assets/img/LogJammer/02-timeline-explorer-4624-filter.png" alt="Timeline Explorer filtering Event ID 4624 for cyberjunkie">
+            <figcaption>Filtering successful logon events identified CyberJunkie's activity.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/LogJammer/03-first-cyberjunkie-logon.png" alt="Timeline Explorer showing first cyberjunkie successful logon timestamp">
+            <figcaption>The earliest matching event showed the first successful logon time.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">27/03/2023 14:37:09</code></pre>
+
+          <h2>Task 2 - Added Firewall Rule</h2>
+          <p><strong>Question:</strong> The user tampered with firewall settings on the system. What is the name of the firewall rule added?</p>
+          <p>
+            Windows Defender Firewall rule additions are recorded with <code>Event ID 2004</code>. I filtered for that event
+            and reviewed the payload fields around the timeline after the first successful logon.
+          </p>
+          <pre><code class="language-text">Event Id = 2004</code></pre>
+          <figure>
+            <img src="../assets/img/LogJammer/04-firewall-event-2004-filter.png" alt="Timeline Explorer filtering firewall Event ID 2004">
+            <figcaption>Event ID 2004 showed firewall rule additions.</figcaption>
+          </figure>
+          <p>Among normal application rules, one rule clearly stood out as suspicious.</p>
+          <figure>
+            <img src="../assets/img/LogJammer/05-metasploit-c2-bypass-rule.png" alt="Firewall event showing Metasploit C2 Bypass rule name">
+            <figcaption>The suspicious firewall rule was named <code>Metasploit C2 Bypass</code>.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Metasploit C2 Bypass</code></pre>
+
+          <h2>Task 3 - Firewall Rule Direction</h2>
+          <p><strong>Question:</strong> What is the direction of the firewall rule?</p>
+          <p>
+            I reused the same firewall event from Task 2 and inspected the full payload. The event showed
+            <code>Direction: 2</code>, <code>Action: Allow</code>, <code>Protocol: TCP</code>, and remote port
+            <code>4444</code>.
+          </p>
+          <pre><code class="language-text">Direction 1 = Inbound
+Direction 2 = Outbound</code></pre>
+          <figure>
+            <img src="../assets/img/LogJammer/06-firewall-rule-direction-outbound.png" alt="Firewall event payload showing direction value 2">
+            <figcaption><code>Direction: 2</code> maps to an outbound firewall rule.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Outbound</code></pre>
+
+          <h2>Task 4 - Audit Policy Subcategory</h2>
+          <p><strong>Question:</strong> The user changed audit policy of the computer. What is the subcategory of this changed policy?</p>
+          <p>
+            Audit policy changes are recorded in the Security log with <code>Event ID 4719</code>. I filtered for that event
+            and reviewed the policy change details.
+          </p>
+          <pre><code class="language-text">Event Id = 4719</code></pre>
+          <figure>
+            <img src="../assets/img/LogJammer/07-audit-policy-event-4719.png" alt="Timeline Explorer showing Event ID 4719 audit policy change">
+            <figcaption>The audit policy change occurred after the firewall modification.</figcaption>
+          </figure>
+          <p>The payload contained a subcategory GUID mapped to <code>Other Object Access Events</code>.</p>
+          <figure>
+            <img src="../assets/img/LogJammer/08-audit-subcategory-guid.png" alt="Audit policy payload showing subcategory GUID">
+            <figcaption>The subcategory GUID identified the changed audit policy area.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Other Object Access Events</code></pre>
+
+          <h2>Task 5 - Scheduled Task Name</h2>
+          <p><strong>Question:</strong> The user <code>cyberjunkie</code> created a scheduled task. What is the name of this task?</p>
+          <p>
+            Scheduled task creation is recorded with <code>Event ID 4698</code>. I filtered for this event and inspected the
+            task payload.
+          </p>
+          <pre><code class="language-text">Event Id = 4698</code></pre>
+          <figure>
+            <img src="../assets/img/LogJammer/10-htb-automation-task-name.png" alt="Scheduled task payload showing HTB-AUTOMATION task name">
+            <figcaption>The task name appeared in the payload as <code>\HTB-AUTOMATION</code>.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/LogJammer/09-scheduled-task-event-4698.png" alt="Timeline Explorer filtering Event ID 4698 scheduled task creation">
+            <figcaption>Event ID 4698 recorded the scheduled task creation.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">HTB-AUTOMATION</code></pre>
+
+          <h2>Task 6 - Scheduled Task File Path</h2>
+          <p><strong>Question:</strong> What is the full path of the file which was scheduled for the task?</p>
+          <p>
+            I reused the same <code>Event ID 4698</code> event and inspected the task XML. Inside the <code>&lt;Actions&gt;</code>
+            section, the <code>&lt;Exec&gt;</code> action showed the PowerShell script configured for execution.
+          </p>
+          <figure>
+            <img src="../assets/img/LogJammer/11-scheduled-task-script-path.png" alt="Scheduled task XML showing Automation-HTB PowerShell script path">
+            <figcaption>The scheduled task executed a PowerShell script from the user's desktop.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">C:\Users\CyberJunkie\Desktop\Automation-HTB.ps1</code></pre>
+
+          <h2>Task 7 - Scheduled Task Arguments</h2>
+          <p><strong>Question:</strong> What are the arguments of the command?</p>
+          <p>
+            The same scheduled task XML also contained the command arguments directly below the command path. The task
+            passed an email-like value to the script using the <code>-A</code> argument.
+          </p>
+          <figure>
+            <img src="../assets/img/LogJammer/12-scheduled-task-arguments.png" alt="Scheduled task XML showing command arguments">
+            <figcaption>The task arguments were visible in the task content XML.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">-A cyberjunkie@hackthebox.eu</code></pre>
+
+          <h2>Task 8 - Tool Detected as Malware</h2>
+          <p><strong>Question:</strong> The antivirus running on the system identified a threat and performed actions on it. Which tool was identified as malware by antivirus?</p>
+          <p>
+            Microsoft Defender actions are recorded with <code>Event ID 1117</code>. I filtered for Defender events and
+            reviewed the detected threat name around the incident timeline.
+          </p>
+          <pre><code class="language-text">Event Id = 1117</code></pre>
+          <figure>
+            <img src="../assets/img/LogJammer/13-defender-event-1117-detection.png" alt="Timeline Explorer showing Defender Event ID 1117 detection">
+            <figcaption>Defender recorded action against a detected threat.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/LogJammer/14-defender-sharphound-threat-name.png" alt="Defender payload showing SharpHound malware name">
+            <figcaption>The malware name indicated <code>HackTool:MSIL/SharpHound!MSR</code>.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">SharpHound</code></pre>
+
+          <h2>Task 9 - Malware File Path</h2>
+          <p><strong>Question:</strong> What is the full path of the malware which raised the alert?</p>
+          <p>
+            I reused the Defender <code>Event ID 1117</code> detection and inspected the payload path field. The detection
+            was tied to the <code>CyberJunkie</code> user and a downloaded SharpHound ZIP file.
+          </p>
+          <figure>
+            <img src="../assets/img/LogJammer/15-defender-detection-user.png" alt="Defender event showing detection user CyberJunkie">
+            <figcaption>The detection was associated with the <code>CyberJunkie</code> user context.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/LogJammer/16-sharphound-zip-path.png" alt="Defender event showing SharpHound ZIP file path">
+            <figcaption>The detected file path pointed to the downloaded SharpHound archive.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">C:\Users\CyberJunkie\Downloads\SharpHound-v1.1.0.zip</code></pre>
+
+          <h2>Task 10 - Antivirus Action Taken</h2>
+          <p><strong>Question:</strong> What action did Microsoft Defender take against the detected threat?</p>
+          <p>
+            The same Defender event showed the platform response. In the payload, the <code>Action Name</code> field showed
+            that the detected SharpHound archive was quarantined.
+          </p>
+          <figure>
+            <img src="../assets/img/LogJammer/17-defender-quarantine-action.png" alt="Defender event showing quarantine action">
+            <figcaption>Microsoft Defender quarantined the detected threat.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Quarantine</code></pre>
+
+          <h2>Task 11 - PowerShell Command Executed</h2>
+          <p><strong>Question:</strong> The user used PowerShell to execute commands. What command was executed by the user?</p>
+          <p>
+            PowerShell script block logging records command content with <code>Event ID 4104</code>. I filtered around the
+            incident timeline and found a suspicious script block at <code>2023-03-27 14:58:33 UTC</code>.
+          </p>
+          <pre><code class="language-text">Event Id = 4104</code></pre>
+          <figure>
+            <img src="../assets/img/LogJammer/18-powershell-4104-event.png" alt="PowerShell Event ID 4104 script block event">
+            <figcaption>PowerShell script block logging captured the executed command.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/LogJammer/19-powershell-get-filehash-command.png" alt="PowerShell script block showing Get-FileHash command">
+            <figcaption>The script block showed a hash calculation against the automation script.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-powershell">Get-FileHash -Algorithm md5 .\Desktop\Automation-HTB.ps1</code></pre>
+
+          <h2>Task 12 - Cleared Event Log</h2>
+          <p><strong>Question:</strong> We suspect the user deleted some event logs. Which event log file was cleared?</p>
+          <p>
+            Event log clearing is recorded with <code>Event ID 104</code>. I filtered for this event and focused on activity
+            around the end of the timeline.
+          </p>
+          <pre><code class="language-text">Event Id = 104</code></pre>
+          <figure>
+            <img src="../assets/img/LogJammer/20-event-log-cleared-104.png" alt="Timeline Explorer showing Event ID 104 log cleared event">
+            <figcaption>Event ID 104 indicated that an event log channel was cleared.</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/img/LogJammer/21-firewall-log-channel-cleared.png" alt="Event payload showing Windows Firewall log channel cleared">
+            <figcaption>The cleared channel matched the earlier firewall tampering activity.</figcaption>
+          </figure>
+          <p><strong>Answer:</strong></p>
+          <pre><code class="language-text">Microsoft-Windows-Windows Firewall With Advanced Security/Firewall</code></pre>
+
+          <h2>Incident Timeline</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Time UTC</th>
+                <th>Source / Event ID</th>
+                <th>Activity</th>
+                <th>Key Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2023-03-27 14:36:45</td>
+                <td>Security / 1102</td>
+                <td>Security audit log cleared</td>
+                <td><code>DESKTOP-887GK2L\CyberJunkie</code></td>
+              </tr>
+              <tr>
+                <td>2023-03-27 14:37:09</td>
+                <td>Security / 4624</td>
+                <td>First successful logon</td>
+                <td><code>cyberjunkie</code></td>
+              </tr>
+              <tr>
+                <td>2023-03-27 14:42:48</td>
+                <td>Defender / 1117</td>
+                <td>Threat detected and action taken</td>
+                <td><code>HackTool:MSIL/SharpHound!MSR</code>, <code>Quarantine</code></td>
+              </tr>
+              <tr>
+                <td>2023-03-27 14:44:43</td>
+                <td>Firewall / 2004</td>
+                <td>Suspicious firewall rule added</td>
+                <td><code>Metasploit C2 Bypass</code>, <code>Outbound</code></td>
+              </tr>
+              <tr>
+                <td>2023-03-27 14:50:03</td>
+                <td>Security / 4719</td>
+                <td>Audit policy changed</td>
+                <td><code>Other Object Access Events</code></td>
+              </tr>
+              <tr>
+                <td>2023-03-27 14:51:21</td>
+                <td>Security / 4698</td>
+                <td>Scheduled task created</td>
+                <td><code>HTB-AUTOMATION</code></td>
+              </tr>
+              <tr>
+                <td>2023-03-27 14:58:33</td>
+                <td>PowerShell / 4104</td>
+                <td>PowerShell command executed</td>
+                <td><code>Get-FileHash -Algorithm md5 .\Desktop\Automation-HTB.ps1</code></td>
+              </tr>
+              <tr>
+                <td>2023-03-27 15:01:56</td>
+                <td>System / 104</td>
+                <td>Firewall event log cleared</td>
+                <td><code>Microsoft-Windows-Windows Firewall With Advanced Security/Firewall</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2>Attack Story</h2>
+          <p>
+            The activity suggests that <code>CyberJunkie</code> performed several suspicious actions after logging in.
+            Microsoft Defender detected SharpHound, a tool commonly used to collect Active Directory data for
+            BloodHound. Shortly after, the user added an outbound firewall rule named <code>Metasploit C2 Bypass</code>,
+            which allowed TCP traffic toward port <code>4444</code>. The user then modified audit policy settings and
+            created a scheduled task named <code>HTB-AUTOMATION</code> to execute a PowerShell script from the desktop.
+          </p>
+          <p>
+            Later, PowerShell logging showed that the user calculated the MD5 hash of the automation script. Finally,
+            the Windows Firewall event log was cleared, likely to hide evidence of the firewall modification.
+          </p>
+
+          <h2>Key Takeaways</h2>
+          <ul>
+            <li>Windows Event IDs provide a strong timeline for user activity and system changes.</li>
+            <li>Firewall rule additions can reveal C2 preparation or reverse shell support.</li>
+            <li>Scheduled task events expose persistence-related artifacts such as task names, commands, and arguments.</li>
+            <li>Defender events can identify offensive tooling and the response action taken.</li>
+            <li>Log clearing events are important because they often indicate defense evasion or cleanup activity.</li>
+          </ul>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js" defer></script>
+  <script src="../assets/js/main.js?v=20260514-writeup-toc-bottom" defer></script>
+</body>
+
+</html>

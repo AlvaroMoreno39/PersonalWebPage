@@ -361,28 +361,37 @@
               <option value="all">All</option>
               <option value="ads-analysis">ADS Analysis</option>
               <option value="active-directory">Active Directory</option>
+              <option value="audit-policy">Audit Policy</option>
               <option value="backup-abuse">Backup Abuse</option>
               <option value="credential-harvesting">Credential Harvesting</option>
               <option value="cyberchef">CyberChef</option>
               <option value="data-exfiltration">Data Exfiltration</option>
+              <option value="defense-evasion">Defense Evasion</option>
               <option value="dfir">DFIR</option>
               <option value="digital-forensics">Digital Forensics</option>
               <option value="dns-analysis">DNS Analysis</option>
               <option value="dns-tunneling">DNS Tunneling</option>
               <option value="enumeration">Enumeration</option>
+              <option value="event-log-analysis">Event Log Analysis</option>
+              <option value="evtx">EVTX</option>
               <option value="file-creation">File Creation</option>
+              <option value="firewall-analysis">Firewall Analysis</option>
               <option value="incident-response">Incident Response</option>
               <option value="initial-access">Initial Access</option>
               <option value="ioc-extraction">IOC Extraction</option>
               <option value="lateral-movement">Lateral Movement</option>
               <option value="log-analysis">Log Analysis</option>
+              <option value="log-clearing">Log Clearing</option>
               <option value="malware-analysis">Malware Analysis</option>
               <option value="mft-analysis">MFT Analysis</option>
               <option value="mitre-attack">MITRE ATT&amp;CK</option>
               <option value="network-connection">Network Connection</option>
               <option value="network-forensics">Network Forensics</option>
               <option value="pcap-analysis">PCAP Analysis</option>
+              <option value="powershell-logging">PowerShell Logging</option>
               <option value="privilege-escalation">Privilege Escalation</option>
+              <option value="scheduled-tasks">Scheduled Tasks</option>
+              <option value="sharphound">SharpHound</option>
               <option value="siem">SIEM</option>
               <option value="splunk">Splunk</option>
               <option value="sysmon">Sysmon</option>
@@ -391,6 +400,8 @@
               <option value="timeline-analysis">Timeline Analysis</option>
               <option value="user-execution">User Execution</option>
               <option value="web">Web</option>
+              <option value="windows-defender">Windows Defender</option>
+              <option value="windows-event-logs">Windows Event Logs</option>
               <option value="wireshark">Wireshark</option>
             </select>
           </div>
@@ -467,6 +478,31 @@
                 <span class="tag">DNS Tunneling</span>
                 <span class="tag">Data Exfiltration</span>
                 <span class="tag">CyberChef</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/logjammer-htb-easy.html" data-team="blue" data-difficulty="easy" data-os="windows"
+            data-techniques="dfir,incident-response,threat-hunting,windows-event-logs,evtx,event-log-analysis,windows-defender,firewall-analysis,audit-policy,scheduled-tasks,powershell-logging,log-clearing,sharphound,defense-evasion">
+            <div class="writeup-card-body">
+              <h3>LogJammer</h3>
+              <div class="writeup-platform"><i class="bi bi-shield-check"></i><span>Hack The Box</span></div>
+              <p>LogJammer is a Blue Team Sherlock focused on Windows event log analysis. The investigation follows the CyberJunkie user through successful logon activity, firewall tampering, audit policy modification, scheduled task creation, Microsoft Defender detections, PowerShell execution, and log clearing.</p>
+              <div class="tag-list">
+                <span class="tag">Blue Team</span>
+                <span class="tag">Easy</span>
+                <span class="tag">Windows</span>
+                <span class="tag">DFIR</span>
+                <span class="tag">Incident Response</span>
+                <span class="tag">Threat Hunting</span>
+                <span class="tag">Windows Event Logs</span>
+                <span class="tag">EVTX</span>
+                <span class="tag">Event Log Analysis</span>
+                <span class="tag">Windows Defender</span>
+                <span class="tag">Firewall Analysis</span>
+                <span class="tag">Scheduled Tasks</span>
+                <span class="tag">PowerShell Logging</span>
+                <span class="tag">Log Clearing</span>
               </div>
             </div>
           </a>
