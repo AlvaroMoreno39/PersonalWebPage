@@ -465,10 +465,10 @@
     const prevButton = document.querySelector("#writeups-prev");
     const nextButton = document.querySelector("#writeups-next");
     const pageInfo = document.querySelector("#writeups-page-info");
-    const PAGE_SIZE = 4;
     const selectedTechniques = new Set();
     const cardShowTimers = new WeakMap();
     let currentPage = 1;
+    let pageSize = 4;
     let hasInitialized = false;
     let filterAnimationTimer = null;
 
@@ -540,7 +540,22 @@
       });
     };
 
+    const getVisibleColumnCount = () => {
+      if (!writeupsGrid) return 4;
+
+      const columns = window.getComputedStyle(writeupsGrid).gridTemplateColumns;
+      const columnCount = columns.split(" ").filter(Boolean).length;
+
+      return Math.max(1, columnCount || 4);
+    };
+
+    const updatePageSize = () => {
+      pageSize = getVisibleColumnCount();
+    };
+
     const applyFilterState = ({ preserveScrollY = null } = {}) => {
+      updatePageSize();
+
       const team = teamSelect.value;
       const difficulty = difficultySelect.value;
       const os = osSelect.value;
@@ -567,12 +582,12 @@
       });
 
       const matchedPositions = new Map(matchedCards.map((card, index) => [card, index]));
-      const totalPages = Math.max(1, Math.ceil(matchedCards.length / PAGE_SIZE));
+      const totalPages = Math.max(1, Math.ceil(matchedCards.length / pageSize));
       if (currentPage > totalPages) currentPage = totalPages;
       if (currentPage < 1) currentPage = 1;
 
-      const startIndex = (currentPage - 1) * PAGE_SIZE;
-      const endIndex = startIndex + PAGE_SIZE;
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
       const visibleTarget = Math.max(0, Math.min(endIndex, matchedCards.length) - startIndex);
 
       writeupCards.forEach((card) => {
@@ -585,7 +600,7 @@
         const position = matchedPositions.get(card);
         const isWithinPage = position !== undefined && position >= startIndex && position < endIndex;
         const pagePosition = isWithinPage ? position - startIndex : 0;
-        const stagger = `${Math.min(pagePosition, PAGE_SIZE - 1) * 42}ms`;
+        const stagger = `${Math.min(pagePosition, pageSize - 1) * 42}ms`;
         card.style.setProperty("--card-stagger", stagger);
 
         if (isWithinPage) {
@@ -605,7 +620,7 @@
             card.classList.remove("is-entering");
             card.classList.add("is-visible");
             cardShowTimers.delete(card);
-          }, 360 + Math.min(pagePosition, PAGE_SIZE - 1) * 42);
+          }, 360 + Math.min(pagePosition, pageSize - 1) * 42);
           cardShowTimers.set(card, timer);
           return;
         }
@@ -757,6 +772,16 @@
         applyFilters({ preserveScrollY });
       });
     }
+
+    window.addEventListener("resize", () => {
+      const nextPageSize = getVisibleColumnCount();
+      if (nextPageSize === pageSize) return;
+
+      const preserveScrollY = getScrollY();
+      pageSize = nextPageSize;
+      currentPage = 1;
+      applyFilters({ preserveScrollY });
+    });
 
     applyFilters();
   }
