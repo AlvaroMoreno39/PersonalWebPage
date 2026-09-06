@@ -15,3 +15,6 @@ Thumbs.db
 assets/img/ILikeTo/_unused/
 assets/img/LogJammer/_unused/
 assets/img/SplunkLogSources/_unused/
+
+# Local writeup originals (documents and unredacted evidence)
+assets/files/writeup-sources/

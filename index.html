@@ -363,7 +363,9 @@
               <option value="active-directory">Active Directory</option>
               <option value="audit-policy">Audit Policy</option>
               <option value="backup-abuse">Backup Abuse</option>
+              <option value="credential-exposure">Credential Exposure</option>
               <option value="credential-harvesting">Credential Harvesting</option>
+              <option value="credential-reuse">Credential Reuse</option>
               <option value="cyberchef">CyberChef</option>
               <option value="data-exfiltration">Data Exfiltration</option>
               <option value="defense-evasion">Defense Evasion</option>
@@ -371,11 +373,14 @@
               <option value="digital-forensics">Digital Forensics</option>
               <option value="dns-analysis">DNS Analysis</option>
               <option value="dns-tunneling">DNS Tunneling</option>
+              <option value="docker">Docker</option>
               <option value="enumeration">Enumeration</option>
               <option value="event-log-analysis">Event Log Analysis</option>
               <option value="evtx">EVTX</option>
               <option value="file-creation">File Creation</option>
               <option value="firewall-analysis">Firewall Analysis</option>
+              <option value="ftp">FTP</option>
+              <option value="git">Git</option>
               <option value="incident-response">Incident Response</option>
               <option value="initial-access">Initial Access</option>
               <option value="ioc-extraction">IOC Extraction</option>
@@ -387,13 +392,18 @@
               <option value="mitre-attack">MITRE ATT&amp;CK</option>
               <option value="network-connection">Network Connection</option>
               <option value="network-forensics">Network Forensics</option>
+              <option value="passpie">Passpie</option>
+              <option value="password-cracking">Password Cracking</option>
+              <option value="path-traversal">Path Traversal</option>
               <option value="pcap-analysis">PCAP Analysis</option>
               <option value="powershell-logging">PowerShell Logging</option>
               <option value="privilege-escalation">Privilege Escalation</option>
               <option value="scheduled-tasks">Scheduled Tasks</option>
               <option value="sharphound">SharpHound</option>
               <option value="siem">SIEM</option>
+              <option value="source-code-review">Source Code Review</option>
               <option value="splunk">Splunk</option>
+              <option value="sql-injection">SQL Injection</option>
               <option value="sysmon">Sysmon</option>
               <option value="threat-hunting">Threat Hunting</option>
               <option value="time-stomping">Time Stomping</option>
@@ -403,6 +413,8 @@
               <option value="windows-defender">Windows Defender</option>
               <option value="windows-event-logs">Windows Event Logs</option>
               <option value="wireshark">Wireshark</option>
+              <option value="wordpress">WordPress</option>
+              <option value="xxe">XXE</option>
             </select>
           </div>
           <button class="filter-reset" type="button" id="filter-reset">Reset</button>
@@ -552,6 +564,53 @@
                 <span class="tag">Threat Hunting</span>
                 <span class="tag">Incident Investigation</span>
                 <span class="tag">Detection Analytics</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/metatwo-htb-easy.html" data-team="red" data-difficulty="easy" data-os="linux"
+            data-techniques="web,wordpress,sql-injection,xxe,ftp,credential-exposure,password-cracking,credential-reuse,lateral-movement,privilege-escalation,passpie">
+            <div class="writeup-card-body">
+              <h3>MetaTwo</h3>
+              <div class="writeup-platform"><i class="bi bi-terminal" aria-hidden="true"></i><span>Hack The Box</span></div>
+              <p>MetaTwo is an easy Linux machine from Hack The Box built around a WordPress compromise. The initial path uses a time-based SQL injection in BookingPress to recover a restricted WordPress account. That account can upload media, enabling an XXE vulnerability that exposes wp-config.php and FTP credentials. Further credential discovery leads to SSH access as jnelson, while a local Passpie vault provides the route to root.</p>
+              <div class="tag-list">
+                <span class="tag">Red Team</span>
+                <span class="tag">Easy</span>
+                <span class="tag">Linux</span>
+                <span class="tag">WordPress</span>
+                <span class="tag">SQL Injection</span>
+                <span class="tag">XXE</span>
+                <span class="tag">FTP</span>
+                <span class="tag">Credential Exposure</span>
+                <span class="tag">Password Cracking</span>
+                <span class="tag">Credential Reuse</span>
+                <span class="tag">Lateral Movement</span>
+                <span class="tag">Privilege Escalation</span>
+                <span class="tag">Passpie</span>
+              </div>
+            </div>
+          </a>
+
+          <a class="writeup-card" href="writeups/opensource-htb-easy.html" data-team="red" data-difficulty="easy" data-os="linux"
+            data-techniques="web,source-code-review,path-traversal,docker,git,credential-exposure,lateral-movement,privilege-escalation,backup-abuse">
+            <div class="writeup-card-body">
+              <h3>OpenSource</h3>
+              <div class="writeup-platform"><i class="bi bi-terminal" aria-hidden="true"></i><span>Hack The Box</span></div>
+              <p>OpenSource is an easy Linux machine from Hack The Box. My assessment connected weaknesses in a Flask file-sharing application, exposed Git history, and privileged backup automation. The main lessons were tracing how source code handles untrusted files, distinguishing container access from host access, and explaining how development and backup practices can expose credentials and cross privilege boundaries.</p>
+              <div class="tag-list">
+                <span class="tag">Red Team</span>
+                <span class="tag">Easy</span>
+                <span class="tag">Linux</span>
+                <span class="tag">Web Exploitation</span>
+                <span class="tag">Source Code Review</span>
+                <span class="tag">Path Traversal</span>
+                <span class="tag">Docker</span>
+                <span class="tag">Git</span>
+                <span class="tag">Credential Exposure</span>
+                <span class="tag">Lateral Movement</span>
+                <span class="tag">Privilege Escalation</span>
+                <span class="tag">Backup Abuse</span>
               </div>
             </div>
           </a>

